@@ -1,0 +1,1 @@
+"F:\UE4\UE4 Installs\UE_4.26\Engine\Binaries\Win64\UE4Editor.exe" "F:\UE4\UE4 Projects\College\PuzzleMP\PuzzleMP.uproject" -game -ResX=800 -ResY=900 -WinY=20 -log
