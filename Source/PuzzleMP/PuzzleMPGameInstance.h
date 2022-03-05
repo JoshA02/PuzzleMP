@@ -30,6 +30,7 @@ class PUZZLEMP_API UPuzzleMPGameInstance : public UGameInstance
 		virtual void OnCreateSessionComplete(FName SessionName, bool Succeeded);
 		virtual void OnFindSessionComplete(bool Succeeded);
 		virtual void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+		virtual void OnAcceptUserInvite(bool Succeeded, int ControllerId, TSharedPtr<const FUniqueNetId, ESPMode::Fast> UserId, const FOnlineSessionSearchResult& InviteSession);
 
 
 		//Blueprint callable events, used from UI.

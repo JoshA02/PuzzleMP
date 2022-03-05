@@ -2,6 +2,9 @@
 
 
 #include "PuzzleMPGameInstance.h"
+
+#include <string>
+
 #include "Kismet/GameplayStatics.h" //Used to access player controller
 #include "Engine/World.h"
 
@@ -18,6 +21,7 @@ void UPuzzleMPGameInstance::Init() {
 			SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UPuzzleMPGameInstance::OnCreateSessionComplete);
 			SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UPuzzleMPGameInstance::OnFindSessionComplete);
 			SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UPuzzleMPGameInstance::OnJoinSessionComplete);
+			SessionInterface->OnSessionUserInviteAcceptedDelegates.AddUObject(this, &UPuzzleMPGameInstance::OnAcceptUserInvite);
 		}
 	}
 }
@@ -28,8 +32,8 @@ void UPuzzleMPGameInstance::CreateServer()
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bAllowJoinInProgress = true;
 	SessionSettings.bIsDedicated = false;
-	SessionSettings.bIsLANMatch = (IOnlineSubsystem::Get()->GetSubsystemName() != "NULL"); //If no subsystem is present, use LAN, otherwise don't.
-	SessionSettings.bShouldAdvertise = true;
+	SessionSettings.bIsLANMatch = (IOnlineSubsystem::Get()->GetSubsystemName() == "NULL"); //If no subsystem is present, use LAN, otherwise don't.
+	SessionSettings.bShouldAdvertise = true; //TODO: Set to false after implementing invites.
 	SessionSettings.bUsesPresence = true;
 	SessionSettings.NumPublicConnections = 2;
 
@@ -46,10 +50,16 @@ void UPuzzleMPGameInstance::OnFindSessionComplete(bool Succeeded)
 {
 	if(!Succeeded) return;
 	TArray<FOnlineSessionSearchResult> SearchResults = SessionSearch->SearchResults;
+	/* 
 	if(SearchResults.Num()) //If it contains no results (0), won't execute.
 	{
+		if(GEngine) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Result length more than 0"));
 		SessionInterface->JoinSession(0, FName("Puzzle Game Session"), SearchResults[0]); //Joins the first result. TODO: Remove this
-	}
+	}else
+	{
+		if(GEngine) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, TEXT("Result length LESS than 0"));
+	}*/
+	//Redundant code -- replaced with invites system
 }
 
 void UPuzzleMPGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
@@ -65,7 +75,22 @@ void UPuzzleMPGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSess
 	}
 }
 
-
+void UPuzzleMPGameInstance::OnAcceptUserInvite(bool Succeeded, int ControllerId, TSharedPtr<const FUniqueNetId, ESPMode::Fast> UserId, const FOnlineSessionSearchResult& InviteSession)
+{
+	if(!Succeeded)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Error accepting game invite"));
+		return;
+	}
+	UE_LOG(LogTemp, Log, TEXT("Accepted game invite. Joining now"));
+	if(InviteSession.IsValid())
+	{
+		SessionInterface->JoinSession(ControllerId, FName("Puzzle Game Session"), InviteSession);
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Unable to join game session as session was not valid"));
+	
+}
 
 void UPuzzleMPGameInstance::JoinServer()
 {
