@@ -63,9 +63,8 @@ void AMyCharacter::LookUpDown(float Value)
 {
 	if(Value)
 	{
-		//GetControlRotation().Pitch
-		const float Temp = PlayerCamera->GetRelativeRotation().Pitch + Value;
-		if(Temp <= 65 && Temp >= -65) AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+/*		const float Temp = PlayerCamera->GetRelativeRotation().Pitch + Value;
+		if(Temp <= 65 && Temp >= -65)*/ AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 	}
 }
 
