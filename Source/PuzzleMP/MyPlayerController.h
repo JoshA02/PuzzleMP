@@ -16,4 +16,8 @@ class PUZZLEMP_API AMyPlayerController : public APlayerController
 
 	public:
 		AMyPlayerController();
+		virtual void SetupInputComponent() override; 
+	private:
+	void OnTalkKeyPressed();
+	void OnTalkKeyReleased();
 };

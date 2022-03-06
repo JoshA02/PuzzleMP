@@ -40,11 +40,11 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	InputComponent->BindAxis("MoveLeftRight", this, &AMyCharacter::MoveLeftRight);
-	InputComponent->BindAxis("MoveForwardBack", this, &AMyCharacter::MoveForwardBack);
+	PlayerInputComponent->BindAxis("MoveLeftRight", this, &AMyCharacter::MoveLeftRight);
+	PlayerInputComponent->BindAxis("MoveForwardBack", this, &AMyCharacter::MoveForwardBack);
 
-	InputComponent->BindAxis("LookLeftRight", this, &AMyCharacter::LookLeftRight);
-	InputComponent->BindAxis("LookUpDown", this, &AMyCharacter::LookUpDown);
+	PlayerInputComponent->BindAxis("LookLeftRight", this, &AMyCharacter::LookLeftRight);
+	PlayerInputComponent->BindAxis("LookUpDown", this, &AMyCharacter::LookUpDown);
 }
 
 void AMyCharacter::MoveLeftRight(float Value)
