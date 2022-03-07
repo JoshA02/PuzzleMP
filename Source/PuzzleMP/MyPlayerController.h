@@ -14,10 +14,16 @@ class PUZZLEMP_API AMyPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
-	public:
-		AMyPlayerController();
-		virtual void SetupInputComponent() override; 
-	private:
+public:
+	AMyPlayerController();
+	virtual void SetupInputComponent() override;
+	virtual void BeginPlay() override;
+	
+private:
 	void OnTalkKeyPressed();
 	void OnTalkKeyReleased();
+
+public:
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
+	bool isTalking = false;
 };

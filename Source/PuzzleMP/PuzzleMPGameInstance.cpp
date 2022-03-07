@@ -14,7 +14,7 @@ UPuzzleMPGameInstance::UPuzzleMPGameInstance() {
 
 void UPuzzleMPGameInstance::Init() {
 	Super::Init();
-
+	
 	if (IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get()) { //If it grabs a subsystem
 		SessionInterface = Subsystem->GetSessionInterface();
 		if (SessionInterface.IsValid()) {

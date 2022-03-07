@@ -3,6 +3,8 @@
 
 #include "MyCharacter.h"
 
+#include "Net/VoiceConfig.h"
+
 // Sets default values
 AMyCharacter::AMyCharacter()
 {
@@ -26,6 +28,7 @@ AMyCharacter::AMyCharacter()
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	// UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
 }
 
 // Called every frame
