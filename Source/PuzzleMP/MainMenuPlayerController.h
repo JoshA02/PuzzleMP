@@ -16,4 +16,5 @@ class PUZZLEMP_API AMainMenuPlayerController : public APlayerController
 
 public:
 	AMainMenuPlayerController();
+	virtual void BeginPlay() override;
 };

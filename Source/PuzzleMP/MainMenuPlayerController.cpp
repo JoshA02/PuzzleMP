@@ -7,3 +7,8 @@ AMainMenuPlayerController::AMainMenuPlayerController()
 {
 	
 }
+
+void AMainMenuPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+}

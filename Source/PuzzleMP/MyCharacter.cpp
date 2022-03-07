@@ -28,7 +28,12 @@ AMyCharacter::AMyCharacter()
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	// UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
+	UVOIPStatics::SetMicThreshold(-5); //Might need VOIP talker to work. TODO: Test
+	/*VOIPRef = UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
+	if(VOIPRef != nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Created VOIP Talker"));
+	}*/
 }
 
 // Called every frame

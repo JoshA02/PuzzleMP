@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/InputComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Net/VoiceConfig.h"
 #include "MyCharacter.generated.h"
 
 UCLASS()
@@ -20,6 +21,9 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	UPROPERTY(BlueprintReadOnly)
+	UVOIPTalker* VOIPRef;
 
 public:	
 	// Called every frame
