@@ -4,7 +4,6 @@
 #include "MyPlayerController.h"
 
 #include "Blueprint/WidgetBlueprintLibrary.h"
-#include "Net/OnlineEngineInterface.h"
 
 AMyPlayerController::AMyPlayerController()
 {
@@ -32,14 +31,14 @@ void AMyPlayerController::OnTalkKeyPressed()
 {
 	UE_LOG(LogTemp, Log, TEXT("Started speaking"));
 	ToggleSpeaking(true);
-	isTalking = true;
+	IsTalking = true;
 }
 
 void AMyPlayerController::OnTalkKeyReleased()
 {
 	UE_LOG(LogTemp, Log, TEXT("Stopped speaking"));
 	ToggleSpeaking(false);
-	isTalking = false;
+	IsTalking = false;
 }
 
 
