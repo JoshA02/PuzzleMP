@@ -28,7 +28,8 @@ AMyCharacter::AMyCharacter()
 void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	UVOIPStatics::SetMicThreshold(-5); //Might need VOIP talker to work. TODO: Test
+	UVOIPStatics::SetMicThreshold(-5);
+	UE_LOG(LogTemp, Log, TEXT("Sample rate: %d"), UVOIPStatics::GetVoiceSampleRate());
 	/*VOIPRef = UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
 	if(VOIPRef != nullptr)
 	{
@@ -40,7 +41,6 @@ void AMyCharacter::BeginPlay()
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input

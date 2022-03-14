@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "MyPlayerController.h"
 #include "Kismet/GameplayStatics.h" //Used to access player controller
 #include "Engine/World.h"
 
@@ -43,7 +44,13 @@ void UPuzzleMPGameInstance::CreateServer()
 void UPuzzleMPGameInstance::OnCreateSessionComplete(FName SessionName, bool Succeeded)
 {
 	if(!Succeeded) return;
-	GetWorld()->ServerTravel("/Game/Maps/Puzzle01?listen");
+	FString puzzleLevelName = "Puzzles_PersLevel";
+	AMyPlayerController* PController = Cast<AMyPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0));
+	if(PController != nullptr && PController->PuzzleLevelName.Len() > 0){
+		UE_LOG(LogTemp, Log, TEXT("MyPlayerController: puzzleLevelName not defined. Defaulting to 'Puzzles_PersLevel'"));
+		puzzleLevelName = PController->PuzzleLevelName;
+	}
+	GetWorld()->ServerTravel("/Game/Maps/" + puzzleLevelName + "?listen");
 }
 
 void UPuzzleMPGameInstance::OnFindSessionComplete(bool Succeeded)

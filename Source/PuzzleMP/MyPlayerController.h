@@ -25,5 +25,8 @@ private:
 
 public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly)
-	bool isTalking = false;
+	bool IsTalking = false;
+
+	UPROPERTY(BlueprintReadWrite, Category=Default)
+	FString PuzzleLevelName = "Puzzles_PersLevel";
 };
