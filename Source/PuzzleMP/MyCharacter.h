@@ -45,6 +45,8 @@ private:
 	void LookLeftRight(float value);
 	void LookUpDown(float value);
 
+	void Interact();
+
 	UPROPERTY(EditAnywhere, Category = "Camera")
 		UCameraComponent* PlayerCamera;
 };

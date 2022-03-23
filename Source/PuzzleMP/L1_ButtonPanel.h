@@ -2,8 +2,11 @@
 
 #pragma once
 
+#include <vector>
+
 #include "CoreMinimal.h"
 #include "L1_Laser.h"
+#include "Trigger.h"
 #include "Engine/StaticMeshActor.h"
 #include "GameFramework/Actor.h"
 #include "L1_ButtonPanel.generated.h"
@@ -28,9 +31,32 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	void SetButtonState(bool On, int ButtonIndex);
+
+	UFUNCTION(BlueprintAuthorityOnly) //Make this "server" only
+	void OnButtonPressed(AActor* TriggeringActor);
+
 	
-	UPROPERTY(BlueprintReadWrite, Category=Default)
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category=Default)
 	UStaticMeshComponent* ButtonPanel;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category=Default)
+	TArray<ATrigger*> Triggers;
+	
+private:
+	UMaterialInstanceDynamic* ButtonMaterial;
+
+	UPROPERTY(EditDefaultsOnly)
+	USceneComponent* Button1Location;
+	UPROPERTY(EditDefaultsOnly)
+	USceneComponent* Button2Location;
+	UPROPERTY(EditDefaultsOnly)
+	USceneComponent* Button3Location;
+	UPROPERTY(EditDefaultsOnly)
+	USceneComponent* Button4Location;
+
+	USceneComponent* ButtonLocations[4];
 
 public:	
 	// Called every frame

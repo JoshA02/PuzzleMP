@@ -3,6 +3,8 @@
 
 #include "MyCharacter.h"
 
+#include "DrawDebugHelpers.h"
+#include "Trigger.h"
 #include "Net/VoiceConfig.h"
 
 // Sets default values
@@ -53,7 +55,34 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 
 	PlayerInputComponent->BindAxis("LookLeftRight", this, &AMyCharacter::LookLeftRight);
 	PlayerInputComponent->BindAxis("LookUpDown", this, &AMyCharacter::LookUpDown);
+
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::Interact);
 }
+
+void AMyCharacter::Interact()
+{
+	FHitResult Result;
+	const FVector StartLocation = PlayerCamera->GetComponentLocation();
+	const FVector EndLocation = (PlayerCamera->GetForwardVector()*400) + PlayerCamera->GetComponentLocation();
+	FCollisionQueryParams CollisionParams(TEXT("TriggerTrace"), true, this);
+	CollisionParams.bTraceComplex = true;
+	CollisionParams.bReturnPhysicalMaterial = false;
+	
+	GetWorld()->LineTraceSingleByChannel(Result, StartLocation, EndLocation, ECC_WorldDynamic, CollisionParams);
+	DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 20);
+	
+	if(Result.Actor == nullptr) return;
+	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
+	if(!HitTrigger)
+	{
+		// UE_LOG(LogTemp, Log, TEXT("Didn't hit Trigger"));
+		return;
+	}
+		
+	HitTrigger->OnTrigger(this);
+	// UE_LOG(LogTemp, Log, TEXT("Hit Trigger"));
+}
+
 
 void AMyCharacter::MoveLeftRight(float Value)
 {
