@@ -3,11 +3,9 @@
 
 #include "L1_ButtonPanel.h"
 
-#include <string>
-
-#include "MyPlayerController.h"
-#include "Engine/StaticMeshActor.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AL1_ButtonPanel::AL1_ButtonPanel()
@@ -39,20 +37,19 @@ void AL1_ButtonPanel::BeginPlay()
 	Super::BeginPlay();
 	if(Laser == nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Laser actor not provided"))
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("BeginPlay: Laser actor not provided"), true, true, FColor::Red, 2);
 		return;
 	}
-
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
 	for(int x = 0; x < 4; x++)
 	{
-		ATrigger* Trigger = GetWorld()->SpawnActor<ATrigger>(ButtonLocations[x]->GetComponentLocation(), FRotator(0,0,0), FActorSpawnParameters());
-		Trigger->SetOwner(this);
-		Trigger->SetTriggerExtent(FVector(6, 6, 6));
-		Trigger->AttachToComponent(ButtonLocations[x], FAttachmentTransformRules::KeepWorldTransform);
+		FVector Location = ButtonLocations[x]->GetComponentLocation();
+		ATrigger* Trigger = GetWorld()->SpawnActor<ATrigger>(Location, FRotator(0, 0, 0), SpawnParams);
+		Trigger->SetTriggerExtent(FVector(6,6,6));
+		Trigger->OnTriggerDelegate.AddDynamic(this, &AL1_ButtonPanel::OnButtonPressed);
 		Triggers.Add(Trigger);
-		Triggers[x]->OnTriggerDelegate.AddDynamic(this, &AL1_ButtonPanel::OnButtonPressed); //Implement trigger indexes or trigger names. This way, we can know which button is being pressed.
-		//TODO: Make sure the visual stuff (changing button state; on/off) is changed to be a multicast function, executed only from the server originally.
-		UE_LOG(LogTemp, Log, TEXT("Spawned trigger"));
 	}
 
 	//Setup dynamic material
@@ -62,51 +59,48 @@ void AL1_ButtonPanel::BeginPlay()
 	SetButtonState(false, 2);
 	SetButtonState(false, 3);
 	
-	if(RoomIndex == 0)
+	// if(RoomIndex == 0)
+	// {
+	// 	//Start of button sequence. TODO: Light up single colour
+	// 	SetButtonState(true, FMath::RandRange(0, 3));
+	// }else
+	// {
+	// 	//Start of button sequence. TODO: Light up 0 colours
+	// }
+}
+
+void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* TriggeredActor)
+{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Called"), true, true, FColor::Blue, 2);
+	const int ButtonIndex = Triggers.IndexOfByKey(TriggeredActor);
+	if(ButtonIndex == INDEX_NONE)
 	{
-		//Start of button sequence. TODO: Light up single colour
-		SetButtonState(true, FMath::RandRange(0, 3));
-		
-	}else
-	{
-		//Start of button sequence. TODO: Light up 0 colours
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: No button"), true, true, FColor::Red, 2);
+		return;
 	}
+	SetButtonState(true, ButtonIndex);
 }
 
-void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor)
+void AL1_ButtonPanel::SetButtonState_Implementation(bool On, int ButtonIndex)
 {
-	UE_LOG(LogTemp, Log, TEXT("Button was pressed"));
-}
-
-void AL1_ButtonPanel::SetButtonState(bool On, int ButtonIndex)
-{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SetButtonState: Setting state for button"), true, true, FColor::Blue, 2);
 	if(ButtonMaterial == nullptr)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Unable to find button material"));
 		return;
 	}
-
-	FName ParamName = "B1Intensity";
-	switch(ButtonIndex){
-		case 0:
-			ParamName = "B1Intensity";
-			break;
-		case 1:
-			ParamName = "B2Intensity";
-			break;
-		case 2:
-			ParamName = "B3Intensity";
-			break;
-		case 3:
-			ParamName = "B4Intensity";
-			break;
-		default:
-			UE_LOG(LogTemp, Error, TEXT("Attempted to adjust state of button outside range (0-3)"));
-			return;
-		
+	UE_LOG(LogTemp, Log, TEXT("SetButtonState: Changing state"));
+	
+	ButtonIndex ++;
+	if(ButtonIndex <= 0 || ButtonIndex > 4)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Attempted to adjust state of button outside range (0-3)"));
+		return;
 	}
-	if(On) ButtonMaterial->SetScalarParameterValue(ParamName, 80);
-	else ButtonMaterial->SetScalarParameterValue(ParamName, 0.1);
+	FString ParamName = "B";
+	ParamName.Append(FString::FromInt(ButtonIndex)).Append("Intensity");
+	if(On) ButtonMaterial->SetScalarParameterValue(FName(ParamName), 80);
+	else ButtonMaterial->SetScalarParameterValue(FName(ParamName), 0.1);
 }
 
 // Called every frame

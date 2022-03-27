@@ -2,12 +2,10 @@
 
 #pragma once
 
-#include <vector>
 
 #include "CoreMinimal.h"
 #include "L1_Laser.h"
 #include "Trigger.h"
-#include "Engine/StaticMeshActor.h"
 #include "GameFramework/Actor.h"
 #include "L1_ButtonPanel.generated.h"
 
@@ -21,7 +19,6 @@ public:
 	AL1_ButtonPanel();
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
-//	TSubclassOf<AL1_Laser> Laser;
 	AL1_Laser* Laser;
 
 	//(0 for host, 1 for other player)
@@ -32,21 +29,20 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	UFUNCTION(NetMulticast, Reliable)
 	void SetButtonState(bool On, int ButtonIndex);
 
-	UFUNCTION(BlueprintAuthorityOnly) //Make this "server" only
-	void OnButtonPressed(AActor* TriggeringActor);
-
+	UFUNCTION()
+	void OnButtonPressed(AActor* TriggeringActor, AActor* TriggeredActor);
 	
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category=Default)
 	UStaticMeshComponent* ButtonPanel;
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category=Default)
 	TArray<ATrigger*> Triggers;
 	
 private:
 	UMaterialInstanceDynamic* ButtonMaterial;
-
+	
 	UPROPERTY(EditDefaultsOnly)
 	USceneComponent* Button1Location;
 	UPROPERTY(EditDefaultsOnly)

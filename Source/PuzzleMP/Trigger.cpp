@@ -3,11 +3,16 @@
 
 #include "Trigger.h"
 
+#include "GameplayDebuggerTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
+
 // Sets default values
 ATrigger::ATrigger()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
 	Trigger = CreateDefaultSubobject<UBoxComponent>(FName("TriggerBox"));
 	Trigger->SetCollisionObjectType(ECC_WorldDynamic);
@@ -33,17 +38,19 @@ void ATrigger::SetTriggerExtent(FVector NewExtent)
 	Trigger->SetBoxExtent(FVector(TriggerExtent.X,TriggerExtent.Y,TriggerExtent.Z), true);
 }
 
+//OnTrigger: Executed by the server from MyCharacter.cpp.
 void ATrigger::OnTrigger(AActor* TriggeringActor)
 {
-	UE_LOG(LogTemp, Log, TEXT("Actor triggered trigger"));
-	OnTriggerDelegate.Broadcast(TriggeringActor);
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnTrigger: Triggered"), true, true, FColor::Blue, 2);
+	OnTriggerDelegate.Broadcast(TriggeringActor, this);
 }
+//Have separate multicast function for post-trigger effects (like deleting the trigger if single use).
+
+
 
 
 // Called every frame
 void ATrigger::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// if(this->GetOwner() != nullptr) UE_LOG(LogTemp, Display, TEXT("Owner exists"));
-	// if(this->GetOwner() == nullptr) UE_LOG(LogTemp, Display, TEXT("Owner doesn't exist"));
 }

@@ -5,6 +5,7 @@
 
 #include "DrawDebugHelpers.h"
 #include "Trigger.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Net/VoiceConfig.h"
 
 // Sets default values
@@ -37,6 +38,7 @@ void AMyCharacter::BeginPlay()
 	{
 		UE_LOG(LogTemp, Log, TEXT("Created VOIP Talker"));
 	}*/
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter: BeginPlay"), true, true, FColor::Blue, 2);
 }
 
 // Called every frame
@@ -56,31 +58,33 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAxis("LookLeftRight", this, &AMyCharacter::LookLeftRight);
 	PlayerInputComponent->BindAxis("LookUpDown", this, &AMyCharacter::LookUpDown);
 
-	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::Interact);
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::InteractInit);
 }
 
-void AMyCharacter::Interact()
+//Provides the server with the correct camera direction
+void AMyCharacter::InteractInit()
 {
+	Interact(PlayerCamera->GetForwardVector());
+}
+
+//Executed when the player presses the interact key (E). Only executes on server.
+void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
+{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - Interact: Performing line trace"), true, true, FColor::Blue, 2);
 	FHitResult Result;
 	const FVector StartLocation = PlayerCamera->GetComponentLocation();
-	const FVector EndLocation = (PlayerCamera->GetForwardVector()*400) + PlayerCamera->GetComponentLocation();
+	const FVector EndLocation = (CameraForwardVector*400) + PlayerCamera->GetComponentLocation();
 	FCollisionQueryParams CollisionParams(TEXT("TriggerTrace"), true, this);
-	CollisionParams.bTraceComplex = true;
 	CollisionParams.bReturnPhysicalMaterial = false;
 	
-	GetWorld()->LineTraceSingleByChannel(Result, StartLocation, EndLocation, ECC_WorldDynamic, CollisionParams);
-	DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 20);
+	GetWorld()->LineTraceSingleByChannel(Result, StartLocation, EndLocation, ECC_WorldDynamic, CollisionParams); //Performs a line trace and stores the results in Result
+	DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 5); //Spawns a debugline to test
 	
-	if(Result.Actor == nullptr) return;
+	if(Result.Actor == nullptr) return; //Trace didn't hit anything so end here
 	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
-	if(!HitTrigger)
-	{
-		// UE_LOG(LogTemp, Log, TEXT("Didn't hit Trigger"));
-		return;
-	}
-		
-	HitTrigger->OnTrigger(this);
-	// UE_LOG(LogTemp, Log, TEXT("Hit Trigger"));
+	if(!HitTrigger) return; //Hit actor wasn't a trigger so end here
+	
+	HitTrigger->OnTrigger(this); //Hit actor was a trigger so tell it it's been triggered
 }
 
 
@@ -98,10 +102,6 @@ void AMyCharacter::LookLeftRight(float Value)
 }
 void AMyCharacter::LookUpDown(float Value)
 {
-	if(Value)
-	{
-/*		const float Temp = PlayerCamera->GetRelativeRotation().Pitch + Value;
-		if(Temp <= 65 && Temp >= -65)*/ AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
-	}
+	if(Value) AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 

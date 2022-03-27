@@ -39,13 +39,17 @@ public:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
+	
 private:
 	void MoveLeftRight(float value);
 	void MoveForwardBack(float value);
 	void LookLeftRight(float value);
 	void LookUpDown(float value);
 
-	void Interact();
+	UFUNCTION(Server, Reliable)
+	void Interact(FVector CameraForwardVector);
+
+	void InteractInit();
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
 		UCameraComponent* PlayerCamera;
