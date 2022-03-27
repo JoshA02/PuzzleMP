@@ -27,10 +27,7 @@ void ATrigger::OnConstruction(const FTransform& Transform)
 }
 
 // Called when the game starts or when spawned
-void ATrigger::BeginPlay()
-{
-	Super::BeginPlay();
-}
+void ATrigger::BeginPlay() { Super::BeginPlay(); }
 
 void ATrigger::SetTriggerExtent(FVector NewExtent)
 {
@@ -44,13 +41,12 @@ void ATrigger::OnTrigger(AActor* TriggeringActor)
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnTrigger: Triggered"), true, true, FColor::Blue, 2);
 	OnTriggerDelegate.Broadcast(TriggeringActor, this);
 }
-//Have separate multicast function for post-trigger effects (like deleting the trigger if single use).
+
+
+//TODO: Have separate multicast function for post-trigger effects (like deleting the trigger if single use).
 
 
 
 
 // Called every frame
-void ATrigger::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
+void ATrigger::Tick(float DeltaTime) { Super::Tick(DeltaTime); }

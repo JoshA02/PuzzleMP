@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
 #include "GameFramework/Actor.h"
@@ -20,23 +21,30 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	void Disarm();
-
 	
-	UPROPERTY(BlueprintReadWrite, Category=Default)
+	UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category=Default)
 	UStaticMeshComponent* BeamMesh;
 	
-	UPROPERTY(BlueprintReadWrite, Category=Default)
+	UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category=Default)
 	UPointLightComponent* BeamLight;
 
-	UPROPERTY(BlueprintReadWrite, Category=Default)
+	UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category=Default)
 	UCapsuleComponent* Trigger;
 
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	UArrowComponent* Arrow;
+
+	UPROPERTY(EditAnywhere, Category=Default)
+	float LaunchStrength = 1000;
+	
 	UFUNCTION()
 	void OnTrigger(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
+	void Disarm();
 
 };
