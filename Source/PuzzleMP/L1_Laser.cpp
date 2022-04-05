@@ -3,14 +3,14 @@
 
 #include "L1_Laser.h"
 
+#include "Cube.h"
 #include "MyCharacter.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
 AL1_Laser::AL1_Laser()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 
 	BeamMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Beam Mesh"));
@@ -40,11 +40,7 @@ void AL1_Laser::Disarm_Implementation()
 void AL1_Laser::OnTrigger(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	AMyCharacter* Character = Cast<AMyCharacter>(OtherActor);
-	if(Character == nullptr) return;
-	Character->LaunchCharacter(Arrow->GetForwardVector() * LaunchStrength, false, false);
+	ACube* Cube = Cast<ACube>(OtherActor);
+	if(Character) Character->LaunchCharacter(Arrow->GetForwardVector() * LaunchStrength, false, false);
+	if(Cube) Cube->Destroy();
 }
-
-
-// Called every frame
-void AL1_Laser::Tick(float DeltaTime) { Super::Tick(DeltaTime); }
-

@@ -13,5 +13,7 @@ UCLASS()
 class PUZZLEMP_API AMyGameStateBase : public AGameStateBase
 {
 	GENERATED_BODY()
-	
+
+protected:
+	virtual void BeginPlay() override;
 };

@@ -18,6 +18,8 @@ class PUZZLEMP_API ATrigger : public AActor
 public:	
 	// Sets default values for this actor's properties
 	ATrigger();
+
+	bool Enabled = true;
 	
 protected:
 	// Called when the game starts or when spawned

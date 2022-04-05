@@ -32,13 +32,12 @@ void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	UVOIPStatics::SetMicThreshold(-5);
-	UE_LOG(LogTemp, Log, TEXT("Sample rate: %d"), UVOIPStatics::GetVoiceSampleRate());
+	// UE_LOG(LogTemp, Log, TEXT("Sample rate: %d"), UVOIPStatics::GetVoiceSampleRate());
 	/*VOIPRef = UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
 	if(VOIPRef != nullptr)
 	{
 		UE_LOG(LogTemp, Log, TEXT("Created VOIP Talker"));
 	}*/
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter: BeginPlay"), true, true, FColor::Blue, 2);
 }
 
 // Called every frame

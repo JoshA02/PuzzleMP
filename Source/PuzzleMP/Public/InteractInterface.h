@@ -25,8 +25,5 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
 	void OnInteract(AActor* Caller);
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	void OnBeginFocus(AActor* Caller);
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	void OnEndFocus(AActor* Caller);
-
+	void OnStopInteract(AActor* Caller);
 };

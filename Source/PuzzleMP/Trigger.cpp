@@ -38,7 +38,12 @@ void ATrigger::SetTriggerExtent(FVector NewExtent)
 //OnTrigger: Executed by the server from MyCharacter.cpp.
 void ATrigger::OnTrigger(AActor* TriggeringActor)
 {
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnTrigger: Triggered"), true, true, FColor::Blue, 2);
+	if(!Enabled)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnTrigger: Trigger Disabled"), true, true, FColor::Red, 2);
+		return;
+	}
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnTrigger: Triggered"), false, true, FColor::Blue, 2);
 	OnTriggerDelegate.Broadcast(TriggeringActor, this);
 }
 
