@@ -4,12 +4,14 @@
 #include "Cube.h"
 
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ACube::ACube()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 	
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>(FName("Cube Mesh"));
 	RootComponent = CubeMesh;
@@ -38,42 +40,69 @@ ACube::ACube()
 
 }
 
+void ACube::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME( ACube, CurrentState );
+	DOREPLIFETIME( ACube, BeingDestroyed );
+	DOREPLIFETIME( ACube, Destroyed );
+}
+
 // Called when the game starts or when spawned
 void ACube::BeginPlay()
 {
 	Super::BeginPlay();
 	CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
-	
-	FTimerHandle UnusedHandle;
-	GetWorldTimerManager().SetTimer(
-		UnusedHandle, this, &ACube::Destroy, 4, false);
 }
 
 void ACube::Destroy()
 {
+	if(!HasAuthority()) return; // No authority | Requires the server to execute the destroy logic
 	BeingDestroyed = true;
-	CubeState = false;
+	State = false;
 }
 
 // Called every frame
 void ACube::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
-	if( FMath::IsNearlyEqual(CubeState, CurrentCubeState) ) return; //Saves resources
 
-	static float CubeStateAsFloat = CubeState; // Turns bool into 0/1
+	if(!HasAuthority()) return; // Unnecessary to execute on non-server clients
+
+	
+	if( FMath::IsNearlyEqual(State, CurrentState) ) return; //Saves resources
+
+	static float CubeStateAsFloat = State; // Turns bool into 0/1
 	
 	// If increasing
-	if(CubeStateAsFloat > CurrentCubeState) CurrentCubeState = FMath::Clamp(CurrentCubeState + (StateChangeSpeed * DeltaTime + 0.0), 0.0, 1.0);
+	if(CubeStateAsFloat > CurrentState) UpdateCurrentState( FMath::Clamp(CurrentState + (StateChangeSpeed * DeltaTime + 0.0), 0.0, 1.0) );
 	// If decreasing
-	if(CubeStateAsFloat < CurrentCubeState) CurrentCubeState = FMath::Clamp(CurrentCubeState - (StateChangeSpeed * DeltaTime + 0.0), 0.0, 1.0);
+	if(CubeStateAsFloat < CurrentState) UpdateCurrentState( FMath::Clamp(CurrentState - (StateChangeSpeed * DeltaTime + 0.0), 0.0, 1.0) );
 
-	const FVector NewVelocity = CubeMesh->GetPhysicsLinearVelocity()*FMath::Lerp(0.7, 1.0, CurrentCubeState);
+	if( FMath::IsNearlyEqual(State, CurrentState) )
+	{
+		Destroyed = !State; // Update the 'destroyed' bool to reflect new state
+		if(Destroyed) GetWorld()->DestroyActor(this);
+	}
+}
+
+// Executed by the server to change the CurrentState. Then triggers the visual changes for all machines
+void ACube::UpdateCurrentState(const float NewState)
+{
+	CurrentState = NewState;
+	ReflectStateChange();
+}
+
+// Auto-executes for clients when CurrentState is changed
+void ACube::OnCurrentStateChange() const { ReflectStateChange(); }
+
+// Executed by everyone when CurrentState is changed
+void ACube::ReflectStateChange() const
+{
+	const FVector NewVelocity = CubeMesh->GetPhysicsLinearVelocity()*FMath::Lerp(0.7, 1.0, CurrentState);
 	CubeMesh->SetPhysicsLinearVelocity(NewVelocity);
-	if(CubeMaterial) CubeMaterial->SetScalarParameterValue("Opacity", CurrentCubeState);
-
-	if( FMath::IsNearlyEqual(CubeState, CurrentCubeState) ) Destroyed = !CubeState; // Update the 'destroyed' bool to reflect new state
+	if(CubeMaterial) CubeMaterial->SetScalarParameterValue("Opacity", CurrentState);
 }
 
 

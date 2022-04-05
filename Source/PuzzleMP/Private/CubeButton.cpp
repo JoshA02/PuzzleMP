@@ -5,13 +5,13 @@
 
 #include "Cube.h"
 #include "InteractInterface.h"
-#include "GeometryCollection/GeometryCollectionSimulationTypes.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ACubeButton::ACubeButton()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(FName("Button Mesh"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("/Game/Meshes/General/SM_CubeButton.SM_CubeButton"));
 	if(MeshAsset.Succeeded()) Mesh->SetStaticMesh(MeshAsset.Object);
@@ -29,41 +29,38 @@ ACubeButton::ACubeButton()
 	TriggerBox->OnComponentEndOverlap.AddDynamic(this, &ACubeButton::TriggerStop);
 }
 
+void ACubeButton::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME( ACubeButton, State );
+}
+
 void ACubeButton::TriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult)
 {
-	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return;
-	
-	IInteractInterface* Interface = Cast<IInteractInterface>(PoweredActor);
-	if(!Interface) return;
-	Interface->Execute_OnInteract(PoweredActor, this);
+	if(!HasAuthority()) return; // Don't execute for non-server clients
+	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return; // Don't continue if actor doesn't meet requirements
+	State = true;
+	ReflectStateChange(); // Reflect the state change for the server
 }
 
 void ACubeButton::TriggerStop(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return;
-	
+	if(!HasAuthority()) return; // Don't execute for non-server clients
+	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return; // Don't continue if actor doesn't meet requirements
+	State = false;
+	ReflectStateChange(); // Reflect the state change for the server
+}
+
+// Auto-executes for clients when State is changed, reflecting the state change for non-server clients
+void ACubeButton::OnChangeState() { ReflectStateChange(); }
+
+// Executed by everyone when State is changed
+void ACubeButton::ReflectStateChange()
+{
 	IInteractInterface* Interface = Cast<IInteractInterface>(PoweredActor);
 	if(!Interface) return;
-	Interface->Execute_OnStopInteract(PoweredActor, this);
-}
-
-void ACubeButton::OnConstruction(const FTransform& Transform)
-{
-	Super::OnConstruction(Transform);
-}
-
-
-// Called when the game starts or when spawned
-void ACubeButton::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-// Called every frame
-void ACubeButton::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
+	if(State) Interface->Execute_OnInteract(PoweredActor, this);
+	else Interface->Execute_OnStopInteract(PoweredActor, this);
 }
 

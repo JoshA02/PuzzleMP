@@ -29,13 +29,22 @@ protected:
 	virtual void BeginPlay() override;
 	
 	UMaterialInstanceDynamic* CubeMaterial;
-	
+
+	UPROPERTY(Replicated)
 	bool BeingDestroyed = false;
+	UPROPERTY(Replicated)
 	bool Destroyed = false;
-	
-	float CurrentCubeState = 1;
-	bool CubeState = true; // true = Visible | false = Destroyed
-	float StateChangeSpeed = 2.25; // 1/StateChangeSpeed = The duration taken to change states (visible/hidden)
+
+	UPROPERTY(ReplicatedUsing=OnCurrentStateChange)
+	float CurrentState = 1;
+	UPROPERTY(Replicated)
+	bool State = true; // true = Visible | false = Destroyed
+	const float StateChangeSpeed = 2.25; // 1/StateChangeSpeed = The duration taken to change states (visible/hidden)
+
+	UFUNCTION()
+	void OnCurrentStateChange() const;
+	void UpdateCurrentState(const float NewState);
+	void ReflectStateChange() const;
 	
 
 public:	

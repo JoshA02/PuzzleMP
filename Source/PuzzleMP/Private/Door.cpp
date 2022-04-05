@@ -3,17 +3,16 @@
 
 #include "Door.h"
 
-#include <string>
-#include <ThirdParty/openexr/Deploy/OpenEXR-2.3.0/OpenEXR/include/ImathFun.h>
-
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 ADoor::ADoor()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
+	bReplicates = true;
+	
 	RootComponent = CreateDefaultSubobject<USceneComponent>(FName("Root"));
 	
 	LeftDoor = CreateDefaultSubobject<UStaticMeshComponent>(FName("Left Door"));
@@ -29,6 +28,14 @@ ADoor::ADoor()
 	InitialLocation = LeftDoor->GetRelativeLocation();
 }
 
+void ADoor::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME( ADoor, State );
+	DOREPLIFETIME( ADoor, CurrentState );
+}
+
 // Called when the game starts or when spawned
 void ADoor::BeginPlay()
 {
@@ -39,26 +46,19 @@ void ADoor::BeginPlay()
 	DoorMaterial->SetScalarParameterValue("DoorState", 0);
 }
 
-void ADoor::CloseDoors()
-{
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Close Door"), true, true, FColor::Red, 2);
-	DoorState = 0;
-}
-void ADoor::OpenDoors()
-{
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Open Door"), true, true, FColor::Red, 2);
-	DoorState = 1;
-}
-
+void ADoor::CloseDoors() { State = 0; }
+void ADoor::OpenDoors() { State = 1; }
 
 void ADoor::OnInteract_Implementation(AActor* Caller)
 {
+	if(!HasAuthority()) return; //Only allow door to be opened by the server
 	UE_LOG(LogTemp, Log, TEXT("Open door"));
 	OpenDoors();
 }
 
 void ADoor::OnStopInteract_Implementation(AActor* Caller)
 {
+	if(!HasAuthority()) return; //Only allow door to be closed by the server
 	UE_LOG(LogTemp, Log, TEXT("Close door"));
 	CloseDoors();
 }
@@ -68,16 +68,33 @@ void ADoor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if(CurrentDoorState == DoorState) return;
+	if(!HasAuthority()) return; // Unnecessary to execute on non-server clients
+	
+	if(CurrentState == State) return;
 
 	// If increasing
-	if(DoorState > CurrentDoorState) CurrentDoorState = FMath::Clamp(CurrentDoorState + (StateChangeSpeed*DeltaTime + 0.0), 0.0, 1.0);
+	if(State > CurrentState) UpdateCurrentState( FMath::Clamp(CurrentState + (StateChangeSpeed*DeltaTime + 0.0), 0.0, 1.0) );
 	// If decreasing
-	if(DoorState < CurrentDoorState) CurrentDoorState = FMath::Clamp(CurrentDoorState - (StateChangeSpeed*DeltaTime + 0.0), 0.0, 1.0);
-	
-	constexpr float OpenWidth = 110;
-	LeftDoor->SetRelativeLocation(InitialLocation + FVector(FMath::Lerp(0.0f, OpenWidth, CurrentDoorState),0,0));
-	RightDoor->SetRelativeLocation(InitialLocation - FVector(FMath::Lerp(0.0f, OpenWidth, CurrentDoorState),0,0));
-	if(DoorMaterial) DoorMaterial->SetScalarParameterValue("LockState", CurrentDoorState);
+	if(State < CurrentState) UpdateCurrentState( FMath::Clamp(CurrentState - (StateChangeSpeed*DeltaTime + 0.0), 0.0, 1.0) );
 }
+
+// Executed by the server to change the CurrentState. Then triggers the visual changes for all machines
+void ADoor::UpdateCurrentState(const float NewState)
+{
+	CurrentState = NewState;
+	ReflectStateChange();
+}
+
+// Auto-executes for clients when CurrentState is changed
+void ADoor::OnCurrentStateChange() const { ReflectStateChange(); }
+
+// Executed by everyone when CurrentState is changed
+void ADoor::ReflectStateChange() const
+{
+	constexpr float OpenWidth = 110;
+	LeftDoor->SetRelativeLocation(InitialLocation + FVector(FMath::Lerp(0.0f, OpenWidth, CurrentState),0,0));
+	RightDoor->SetRelativeLocation(InitialLocation - FVector(FMath::Lerp(0.0f, OpenWidth, CurrentState),0,0));
+	if(DoorMaterial) DoorMaterial->SetScalarParameterValue("LockState", CurrentState);
+}
+
 

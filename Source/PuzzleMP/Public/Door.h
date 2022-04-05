@@ -27,12 +27,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	float DoorState = 0.0f;
-	float CurrentDoorState = 0.0f;
+	UPROPERTY(Replicated)
+	float State = 0.0f;
+	UPROPERTY(ReplicatedUsing=OnCurrentStateChange)
+	float CurrentState = 0.0f;
+
+	UFUNCTION()
+	void OnCurrentStateChange() const;
+	void UpdateCurrentState(const float NewState);
+	void ReflectStateChange() const;
 
 private:
 	FVector InitialLocation;
-	float StateChangeSpeed = 2.25; // 1/StateChangeSpeed = The duration taken to change states (visible/hidden)
+	const float StateChangeSpeed = 2.25; // 1/StateChangeSpeed = The duration taken to change states (visible/hidden)
 	
 public:	
 	// Called every frame

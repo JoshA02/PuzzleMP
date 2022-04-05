@@ -219,7 +219,7 @@ int AL1_ButtonPanel::GetRandomButtonIndex()
 
 void AL1_ButtonPanel::OnChangeButtonState()
 {
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnChangeButtonState: Detected change"), false, true, FColor::Blue, 2);
+	// UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnChangeButtonState: Detected change"), false, true, FColor::Blue, 2);
 	UpdateButtonStates(); //Executes it for the clients.
 }
 
