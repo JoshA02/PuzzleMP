@@ -4,9 +4,7 @@
 #include "L1_ButtonPanel.h"
 
 #include "DrawDebugHelpers.h"
-#include "MyGameStateBase.h"
 #include "GameFramework/Character.h"
-#include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
@@ -15,8 +13,13 @@ AL1_ButtonPanel::AL1_ButtonPanel()
 {
 	bReplicates = true;
 
-	ButtonPanel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SM_ButtonPanel"));
+	ButtonPanel = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Button Panel Mesh"));
 	RootComponent = ButtonPanel;
+
+	Cable = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Cable"));
+	Cable->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CableAsset(TEXT("/Game/Meshes/L1/SM_L1_CablePanelLaser.SM_L1_CablePanelLaser"));
+	if(CableAsset.Succeeded()) Cable->SetStaticMesh(CableAsset.Object);
 
 	Button1Location = CreateDefaultSubobject<USceneComponent>(TEXT("Button 1 Location"));
 	Button2Location = CreateDefaultSubobject<USceneComponent>(TEXT("Button 2 Location"));
@@ -36,7 +39,7 @@ void AL1_ButtonPanel::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & 
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME( AL1_ButtonPanel, ButtonStates );
+	DOREPLIFETIME( AL1_ButtonPanel, ButtonStates ); // Sets up replication for ButtonStates
 }
 
 void AL1_ButtonPanel::BeginPlay()
@@ -44,160 +47,87 @@ void AL1_ButtonPanel::BeginPlay()
 	Super::BeginPlay();
 
 	ButtonMaterial = ButtonPanel->CreateDynamicMaterialInstance(1);
+	CableMaterial = Cable->CreateDynamicMaterialInstance(0);
+	
+	if(!HasAuthority()) return; // No need for clients to execute anything further
 
-	//Finds the other button panel and stores reference of it to a variable
+	// Finds the other button panel and stores reference of it to a variable
 	TArray<AActor*> Result;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), StaticClass(), Result);
-	for(AActor* Actor : Result)
+	if(Result.Num() > 2)
 	{
-		if(Cast<AL1_ButtonPanel>(Actor) && Actor != this)
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("ButtonPanel: Too many button panels in level | Should only be 2 present"), true, true, FColor::Red, 2);
+		return;
+	}
+	for( AActor* Actor : Result )
+	{
+		if( Cast<AL1_ButtonPanel>(Actor) && Actor != this )
 		{
 			OtherButtonPanel = Cast<AL1_ButtonPanel>(Actor);
 			break;
 		}
 	}
-	if(!OtherButtonPanel)
+	if( !OtherButtonPanel || !Laser )
 	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("BeginPlay: Could not find other button panel"), true, true, FColor::Red, 2);
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("ButtonPanel: Could not find other button panel or laser"), true, true, FColor::Red, 2);
 		return;
 	}
-	if(Laser == nullptr)
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("BeginPlay: Laser actor not provided"), true, true, FColor::Red, 2);
-		return;
-	}
-
-
-	//Trigger setup
+	
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
-	for(int x = 0; x < 4; x++)
+	for( int x = 0; x < 4; x++ )
 	{
-		FVector Location = ButtonLocations[x]->GetComponentLocation();
-		ATrigger* Trigger = GetWorld()->SpawnActor<ATrigger>(Location, FRotator(0, 0, 0), SpawnParams);
-		Trigger->SetTriggerExtent(FVector(6,6,6));
-		Trigger->OnTriggerDelegate.AddDynamic(this, &AL1_ButtonPanel::OnButtonPressed);
+		FVector SpawnLocation = ButtonLocations[x]->GetComponentLocation();
+		ATrigger* Trigger = GetWorld()->SpawnActor<ATrigger>(SpawnLocation, FRotator(0), SpawnParams);
 		Trigger->Enabled = false;
+		Trigger->OnTriggerDelegate.AddDynamic(this, &AL1_ButtonPanel::OnButtonPressed);
 		Triggers.Add(Trigger);
 	}
 
-	//Updates button visuals to match their states (all off by default)
-	UpdateButtonStates();
 	StartPuzzle();
 }
 
 void AL1_ButtonPanel::StartPuzzle()
 {
-	//Make sure the host machine is running this.
 	if(!HasAuthority()) return;
 
-	//Turn all lights off.
-	for(int x = 0; x < ButtonStates.Num(); x++) SetButtonState(x, false);
+	// Turn all lights off
+	for( int x = 0; x < ButtonStates.Num(); x++ ) SetButtonState(x, false);
 
+	// Temporarily disable all button triggers
 	for(ATrigger* Trigger : Triggers) Trigger->Enabled = false;
-	FakeLitButton = TPairInitializer<int, bool>{0, false};
-	
-	//If this is room 0, turn on a random button's light.
+
+	// Randomly decide the starting button
 	if(RoomIndex == 0) StartButtonIndex = GetRandomButtonIndex();
+
+	// Reset the amount of times the intro loop has played
+	IntroLightLoopCount = 0;
 	
-	GetWorldTimerManager().SetTimer(IntroLights, this, &AL1_ButtonPanel::FakeLightButton, 0.1f, true, 2.0f);
+	// Start the intro loop
+	GetWorldTimerManager().SetTimer(IntroLights, this, &AL1_ButtonPanel::FlashLights, 0.6f, true);
 }
 
-//Possibly change to have all lights blink on/off simultaneously (IntroLightLoops times).
-void AL1_ButtonPanel::FakeLightButton()
+void AL1_ButtonPanel::FlashLights()
 {
-	for(int x = 0; x < ButtonStates.Num(); x++) SetButtonState(x, false); //Turn all buttons off.
-
-	//If the index is higher than the last button, means it's just finished a loop.
-	if(FakeLitButton.Key > ButtonStates.Num() - 1)
+	if(!HasAuthority()) return;
+	if(IntroLightLoopCount >= (IntroLightLoops - 1) * 2 )
 	{
-		//Check if it's looped IntroLightLoops - 1 times. If it has, stop here.
-		if(FakeLitButton.Value == IntroLightLoops - 1)
-		{
-			GetWorldTimerManager().ClearTimer(IntroLights);
-			for(ATrigger* Trigger : OtherButtonPanel->Triggers) Trigger->Enabled = true;
-			for(ATrigger* Trigger : Triggers) Trigger->Enabled = true;
-			return;
-		}
-
-		//Otherwise, continue by resetting the index to 0 and increasing the value (amount of loops)
-		FakeLitButton.Key = 0; //Reset to start of sequence.
-		FakeLitButton.Value ++; //Increment the loop counter.
-	}
-	
-	SetButtonState(FakeLitButton.Key, true); //Turn this button on.
-	if(StartButtonIndex == FakeLitButton.Key && FakeLitButton.Value == IntroLightLoops - 1) //If the randomly picked starting button is the same as the lit one, and it's at the last loop, stop here.
-	{
-		LastLitButtonIndex = StartButtonIndex;
 		GetWorldTimerManager().ClearTimer(IntroLights);
-		return;
-	}
-	FakeLitButton.Key ++;
-}
-
-void AL1_ButtonPanel::SetButtonState(int ButtonIndex, bool NewState)
-{
-	if(!HasAuthority())
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("SetButtonState: Function aborted; no authority"), true, true, FColor::Red, 2);
-		return;
-	}
-	ButtonStates[ButtonIndex] = NewState;
-	UpdateButtonStates(); //Updates for server.
-}
-
-
-
-void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* TriggeredActor)
-{
-	const int ButtonIndex = Triggers.IndexOfByKey(TriggeredActor);
-	if(ButtonIndex == INDEX_NONE)
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed button is unregistered"), true, true, FColor::Red, 2);
+		if( StartButtonIndex != INDEX_NONE ) SetButtonState(StartButtonIndex, true);
+		for( ATrigger* Trigger : Triggers ) Trigger->Enabled = true; // Re-enable button triggers
 		return;
 	}
 	
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Button Pressed"), false, true, FColor::Blue, 2);
-	//Pressed a button that is already activated. Do nothing.
-	if(ButtonStates[ButtonIndex])
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed a lit button"), true, false, FColor::Blue, 2);
-		//TODO: Possibly play a dull tone to indicate that nothing happened, but to still give button feedback to the player.
-		return;
-	}
-	if(!ButtonStates[ButtonIndex])
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed an unlit button"), true, false, FColor::Blue, 2);
-	}
+	const bool CurrentState = ButtonStates[0];
 
-	// const TArray<bool> OtherButtonStates = OtherButtonPanel->ButtonStates;
-	if(OtherButtonPanel->LastLitButtonIndex == ButtonIndex)
-	{
-		const int OthersLastLit = OtherButtonPanel->LastLitButtonIndex;
-		OtherButtonPanel->LastLitButtonIndex = INDEX_NONE;
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed other player's last lit button"), true, false, FColor::Blue, 2);
-		SetButtonState(OthersLastLit, true);
+	// Turn on/off each button
+	for( int x = 0; x < ButtonStates.Num(); x++ ) SetButtonState(x, !CurrentState);
 
-		if(!ButtonStates.Contains(false))
-		{
-			Laser->Disarm();
-			OtherButtonPanel->Laser->Disarm();
-			return;
-		}
-		const int RandomIndex = GetRandomButtonIndex();
-		SetButtonState(RandomIndex, true); //Turns on a random light on this panel
-		LastLitButtonIndex = RandomIndex;
-	}else
-	{
-		//TODO: Play dull tone to indicate mistake.
-		StartPuzzle();
-		OtherButtonPanel->StartPuzzle();
-		return;
-	}
-
+	// Count how many times the loop's been performed
+	IntroLightLoopCount ++;
 }
 
-int AL1_ButtonPanel::GetRandomButtonIndex()
+int AL1_ButtonPanel::GetRandomButtonIndex() const
 {
 	if(!HasAuthority()) return INDEX_NONE; //Ensures only the server is executing this code.
 
@@ -213,34 +143,105 @@ int AL1_ButtonPanel::GetRandomButtonIndex()
 	}
 
 	return ButtonIndexes[FMath::RandRange(0, ButtonIndexes.Num() - 1)];
-	// ButtonStates[ButtonIndexes[FMath::RandRange(0, ButtonIndexes.Num() - 1)]] = true;
-	UpdateButtonStates(); //Executes it for the server.
 }
 
-void AL1_ButtonPanel::OnChangeButtonState()
-{
-	// UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnChangeButtonState: Detected change"), false, true, FColor::Blue, 2);
-	UpdateButtonStates(); //Executes it for the clients.
-}
 
-void AL1_ButtonPanel::UpdateButtonStates()
+void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* TriggeredActor)
 {
-	if(!ButtonMaterial) ButtonMaterial = ButtonPanel->CreateDynamicMaterialInstance(1); //Catches times where this gets executed before beginPlay
+	if(!HasAuthority()) return;
 	
-	for(int x = 0; x < ButtonStates.Num(); x++)
+	const int ButtonIndex = Triggers.IndexOfByKey(TriggeredActor);
+	const bool ButtonLit = ButtonStates[ButtonIndex];
+	
+	if(ButtonIndex == INDEX_NONE)
 	{
-		const int ButtonIndex = x + 1;
-		if(ButtonIndex <= 0 || ButtonIndex > 4)
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed button is unregistered"), true, true, FColor::Red, 2);
+		return;
+	}
+	
+	//Pressed a button that is already activated. Do nothing.
+	if(ButtonLit)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed a lit button"), true, false, FColor::Blue, 2);
+		//TODO: Possibly play a dull tone to indicate that nothing happened, but to still give button feedback to the player.
+		return;
+	}
+	if(!ButtonLit)
+	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed an unlit button"), true, false, FColor::Blue, 2);
+	}
+
+	if(OtherButtonPanel->LastLitButtonIndex == ButtonIndex)
+	{
+		const int OthersLastLit = OtherButtonPanel->LastLitButtonIndex;
+		OtherButtonPanel->LastLitButtonIndex = INDEX_NONE;
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed other player's last lit button"), true, false, FColor::Blue, 2);
+		SetButtonState(OthersLastLit, true);
+
+		if(!ButtonStates.Contains(false))
 		{
-			UE_LOG(LogTemp, Error, TEXT("Attempted to adjust state of button outside range (0-3)"));
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Puzzle complete"), true, true, FColor::Blue, 2);
+
+			Laser->Disarm();
+			OtherButtonPanel->Laser->Disarm();
+
+			for(ATrigger* Trigger : Triggers) Trigger->Enabled = false;
+			for(ATrigger* Trigger : OtherButtonPanel->Triggers) Trigger->Enabled = false;
+
+			TurnOnCable();
+			OtherButtonPanel->TurnOnCable();
+			
 			return;
 		}
-		
-		bool On = ButtonStates[x];
-		FString ParamName = "B";
-		ParamName.Append(FString::FromInt(ButtonIndex)).Append("Intensity");
-		if(On) ButtonMaterial->SetScalarParameterValue(FName(ParamName), 80);
-		else ButtonMaterial->SetScalarParameterValue(FName(ParamName), 0.1);
+		const int RandomIndex = GetRandomButtonIndex();
+		SetButtonState(RandomIndex, true); //Turns on a random light on this panel
+		LastLitButtonIndex = RandomIndex;
+	}else
+	{
+		//TODO: Play dull tone to indicate mistake.
+		StartPuzzle();
+		OtherButtonPanel->StartPuzzle();
+		return;
 	}
 }
+
+void AL1_ButtonPanel::TurnOnCable_Implementation()
+{
+	CableMaterial->SetScalarParameterValue(FName("State"), 1);
+}
+
+
+
+
+void AL1_ButtonPanel::SetButtonState(const int ButtonIndex, const bool NewState)
+{
+	if(!HasAuthority()) return; // Only allow server to change button states
+	ButtonStates[ButtonIndex] = NewState;
+	if(NewState) LastLitButtonIndex = ButtonIndex;
+	ReflectStateChange();
+}
+
+void AL1_ButtonPanel::OnButtonStatesChanged() { ReflectStateChange(); }
+
+void AL1_ButtonPanel::ReflectStateChange()
+{
+	// Catches times where this gets executed before beginPlay
+	if(!ButtonMaterial) ButtonMaterial = ButtonPanel->CreateDynamicMaterialInstance(1);
+
+	// Updates the emissive value of the material
+	for(int x = 0; x < ButtonStates.Num(); x++)
+	{
+		const int ButtonNumber = x + 1;
+
+		FString ParamName = "B";
+		ParamName.Append(FString::FromInt(ButtonNumber)).Append("Intensity");
+
+		// Sets param on material (B1Intensity, B2Intensity, etc)
+		if( ButtonStates[x] ) ButtonMaterial->SetScalarParameterValue(FName(ParamName), 80);
+		else ButtonMaterial->SetScalarParameterValue(FName(ParamName), 0.1);
+	}
+
+	
+}
+
 

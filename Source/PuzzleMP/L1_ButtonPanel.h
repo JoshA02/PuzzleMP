@@ -25,6 +25,10 @@ public:
 	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
 	int RoomIndex = 0;
 
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+	UStaticMeshComponent* Cable;
+
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -39,19 +43,20 @@ protected:
 
 	TArray<ATrigger*> Triggers;
 
-	int GetRandomButtonIndex();
+	int GetRandomButtonIndex() const;
 	
 private:
 	UMaterialInstanceDynamic* ButtonMaterial;
 
-	UFUNCTION()
-	void OnChangeButtonState();
+	UPROPERTY(Replicated)
+	UMaterialInstanceDynamic* CableMaterial;
 
-	UPROPERTY(ReplicatedUsing=OnChangeButtonState)
+	UPROPERTY(ReplicatedUsing=OnButtonStatesChanged)
 	TArray<bool> ButtonStates = {false, false, false, false};
-
 	UFUNCTION()
-	void UpdateButtonStates();
+	void OnButtonStatesChanged(); // Executed for non-server clients when ButtonStates is changed
+	void SetButtonState(const int ButtonIndex, const bool NewState); // Updates a button's state | Execute only from server
+	void ReflectStateChange(); // Reflects the changes to button state in the material
 	
 	UPROPERTY(EditDefaultsOnly)
 	USceneComponent* Button1Location;
@@ -66,14 +71,13 @@ private:
 
 	void StartPuzzle();
 
-	TPair<int, int> FakeLitButton = TPairInitializer<int, int>{0, 0};
-	void FakeLightButton();
+	void FlashLights();
 	int StartButtonIndex = INDEX_NONE;
 	FTimerHandle IntroLights;
+	int IntroLightLoopCount = 0;
 	const int IntroLightLoops = 5;
+	int LastLitButtonIndex = INDEX_NONE; // The index of the most recently lit button
 
-	void SetButtonState(int ButtonIndex, bool NewState);
-
-	int LastLitButtonIndex = INDEX_NONE; //The index of the most recently lit button
-
+	UFUNCTION(NetMulticast, Reliable)
+	void TurnOnCable();
 };

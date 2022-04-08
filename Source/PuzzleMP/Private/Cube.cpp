@@ -12,6 +12,7 @@ ACube::ACube()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
+	SetReplicateMovement(true);
 	
 	CubeMesh = CreateDefaultSubobject<UStaticMeshComponent>(FName("Cube Mesh"));
 	RootComponent = CubeMesh;
@@ -53,6 +54,7 @@ void ACube::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetim
 void ACube::BeginPlay()
 {
 	Super::BeginPlay();
+	SetReplicateMovement(true);
 	CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
 }
 
@@ -104,5 +106,7 @@ void ACube::ReflectStateChange() const
 	CubeMesh->SetPhysicsLinearVelocity(NewVelocity);
 	if(CubeMaterial) CubeMaterial->SetScalarParameterValue("Opacity", CurrentState);
 }
+
+bool ACube::IsBeingDestroyed() { return BeingDestroyed; }
 
 
