@@ -23,7 +23,7 @@ protected:
 	UPROPERTY()
 	UBoxComponent* TriggerBox;
 
-	UPROPERTY()
+	UPROPERTY(EditInstanceOnly)
 	UStaticMeshComponent* Mesh;
 
 	UPROPERTY(EditInstanceOnly, Category=Default)

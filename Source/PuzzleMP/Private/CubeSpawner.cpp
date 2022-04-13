@@ -25,8 +25,10 @@ void ACubeSpawner::BeginPlay()
 
 	if(!HasAuthority()) return;
 
+
+	if(CubeSpawnRate <= 0) return;
 	FTimerHandle Handle;
-	GetWorld()->GetTimerManager().SetTimer(Handle, this, &ACubeSpawner::SpawnObject, 5, true);
+	GetWorld()->GetTimerManager().SetTimer(Handle, this, &ACubeSpawner::SpawnObject, CubeSpawnRate, true);
 }
 
 void ACubeSpawner::SpawnObject()
@@ -46,6 +48,7 @@ void ACubeSpawner::SpawnObject()
 	// Call a multicast function for things like sounds that want to be played for all players.
 }
 
+// Support for manual spawning via player interaction
 void ACubeSpawner::OnInteract_Implementation(AActor* Caller) { SpawnObject(); }
 
 // Called every frame

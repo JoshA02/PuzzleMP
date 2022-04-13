@@ -211,8 +211,6 @@ void AL1_ButtonPanel::TurnOnCable_Implementation()
 }
 
 
-
-
 void AL1_ButtonPanel::SetButtonState(const int ButtonIndex, const bool NewState)
 {
 	if(!HasAuthority()) return; // Only allow server to change button states

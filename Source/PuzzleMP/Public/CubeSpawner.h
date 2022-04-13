@@ -26,6 +26,9 @@ protected:
 	UPROPERTY(EditInstanceOnly, Category=Default)
 	int MaxCubes = 1;
 
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	float CubeSpawnRate = 5;
+	
 private:
 	void SpawnObject();
 	
