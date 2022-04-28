@@ -31,6 +31,8 @@ void ADoorPanel::BeginPlay()
 void ADoorPanel::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
+
+void ADoorPanel::SetMainText_Implementation(DoorPanelStates Text, DoorPanelTextColours Colour) {}
+void ADoorPanel::SetSubText_Implementation(DoorPanelStates Text, DoorPanelTextColours Colour) {}
 

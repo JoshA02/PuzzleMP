@@ -19,6 +19,15 @@ public:
 	virtual void SetupInputComponent() override;
 	virtual void BeginPlay() override;
 	
+
+	void FadeHUDToBlack();
+	UFUNCTION(Client, Reliable)
+	void Owner_FadeHUDToBlack();
+	
+	void FadeHUDFromBlack();
+	UFUNCTION(Client, Reliable)
+	void Owner_FadeHUDFromBlack();
+	
 private:
 	void OnTalkKeyPressed();
 	void OnTalkKeyReleased();

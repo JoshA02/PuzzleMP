@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DoorPanelStates.h"
+#include "DoorPanelTextColours.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/Actor.h"
 #include "DoorPanel.generated.h"
@@ -18,6 +20,14 @@ public:
 
 	UPROPERTY(EditInstanceOnly, BlueprintReadWrite)
 	UWidgetComponent* TextWidget;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetMainText(DoorPanelStates Text, DoorPanelTextColours Colour);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void SetSubText(DoorPanelStates Text, DoorPanelTextColours Colour);
+
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly)
+	int PanelIndex = 0;
 
 protected:
 	// Called when the game starts or when spawned

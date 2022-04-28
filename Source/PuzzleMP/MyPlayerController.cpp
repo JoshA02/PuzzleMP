@@ -3,7 +3,9 @@
 
 #include "MyPlayerController.h"
 
+#include "PlayerHUD.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 AMyPlayerController::AMyPlayerController()
 {
@@ -40,5 +42,32 @@ void AMyPlayerController::OnTalkKeyReleased()
 	ToggleSpeaking(false);
 	IsTalking = false;
 }
+
+void AMyPlayerController::FadeHUDToBlack()
+{
+	if(!IsLocalController()) return;
+	APlayerHUD* HUD = Cast<APlayerHUD>(GetHUD()); // Get reference to the player's HUD class
+	HUD->FadeToBlack();
+}
+
+void AMyPlayerController::Owner_FadeHUDToBlack_Implementation()
+{
+	if(!IsLocalController()) return;
+	FadeHUDToBlack();
+}
+void AMyPlayerController::Owner_FadeHUDFromBlack_Implementation()
+{
+	if(!IsLocalController()) return;
+	FadeHUDFromBlack();
+}
+
+void AMyPlayerController::FadeHUDFromBlack()
+{
+	if(!IsLocalController()) return;
+	APlayerHUD* HUD = Cast<APlayerHUD>(GetHUD()); // Get reference to the player's HUD class
+	HUD->FadeFromBlack();
+}
+
+
 
 

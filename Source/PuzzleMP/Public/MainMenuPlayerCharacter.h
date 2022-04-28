@@ -3,8 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DoorPanel.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
+#include "PuzzleMP/MyCharacter.h"
 #include "MainMenuPlayerCharacter.generated.h"
 
 UCLASS()
@@ -27,6 +29,11 @@ protected:
 	int PendingActiveSelection = 0;
 	int ActiveSelection = 0;
 
+	UPROPERTY(Replicated)
+	bool CanStart = false;
+
+	TArray<ADoorPanel*> DoorPanels;
+	
 	TArray<FTransform> SelectionLocations;
 	
 	void SetActiveSelection(int NewSelection);
@@ -41,6 +48,14 @@ protected:
 
 	FTransform TargetTransform;
 	FTransform CurrentTransform;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<AMyCharacter> GameplayCharacterClass;
+
+	bool CanSelect = true;
+	
+	int LevelNumberToLoad = 0;
+	void SpawnNewCharactersAndPossess();
 
 public:	
 	// Called every frame
