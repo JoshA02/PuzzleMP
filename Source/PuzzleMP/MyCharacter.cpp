@@ -4,8 +4,10 @@
 #include "MyCharacter.h"
 
 #include "DrawDebugHelpers.h"
+#include "PickupableCube.h"
 #include "Trigger.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Net/UnrealNetwork.h"
 #include "Net/VoiceConfig.h"
 
 // Sets default values
@@ -24,7 +26,15 @@ AMyCharacter::AMyCharacter()
 	PlayerCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	PlayerCamera->SetupAttachment(RootComponent);
 	PlayerCamera->bUsePawnControlRotation = true;
+}
+
+void AMyCharacter::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
+	DOREPLIFETIME( AMyCharacter, HeldItem ); // Sets up replication for the HeldItem
+	DOREPLIFETIME( AMyCharacter, HeldItemPosition ); // Sets up replication for the desired position of the HeldItem
+	DOREPLIFETIME( AMyCharacter, CachedForwardVec );
 }
 
 // Called when the game starts or when spawned
@@ -32,19 +42,36 @@ void AMyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	UVOIPStatics::SetMicThreshold(-5);
-	// UE_LOG(LogTemp, Log, TEXT("Sample rate: %d"), UVOIPStatics::GetVoiceSampleRate());
-	/*VOIPRef = UVOIPTalker::CreateTalkerForPlayer(GetPlayerState());
-	if(VOIPRef != nullptr)
-	{
-		UE_LOG(LogTemp, Log, TEXT("Created VOIP Talker"));
-	}*/
 }
 
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+
+	/* Held Item Stuff
+	 * This section moves the (replicated) HeldItem to the (replicated) HeldItemPosition.
+	*/
+	if(HeldItem == nullptr) return;
+	if(HeldItem->IsPendingKill()) return;
+	if(HeldItem->IsActorBeingDestroyed()) return;
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - HeldItem is valid"), true, true, FColor::Blue, 2);
+	
+	// If the server is not controlling this character and not running this code
+	if(!HasAuthority() && IsLocallyControlled()) Server_UpdateCachedForwardVec(PlayerCamera->GetForwardVector()); // Tell the server its forward vector (where it's facing)
+
+	// If the server is controlling this character and is running this code
+	if(HasAuthority() && IsLocallyControlled()) CachedForwardVec = PlayerCamera->GetForwardVector();
+
+	
+	HeldItemPosition = this->GetActorLocation() + (CachedForwardVec * HoldDistance) + FVector(0, 0, 50);
+	
+	HeldItem->SetActorLocation(HeldItemPosition);
 }
+
+void AMyCharacter::Server_UpdateCachedForwardVec_Implementation(FVector ForwardVector) { CachedForwardVec = ForwardVector; }
+
 
 // Called to bind functionality to input
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -58,13 +85,13 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAxis("LookUpDown", this, &AMyCharacter::LookUpDown);
 
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::InteractInit);
+	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMyCharacter::StopInteractInit);
 }
 
 //Provides the server with the correct camera direction
-void AMyCharacter::InteractInit()
-{
-	Interact(PlayerCamera->GetForwardVector());
-}
+void AMyCharacter::InteractInit() { Interact(PlayerCamera->GetForwardVector()); }
+
+void AMyCharacter::StopInteractInit() { StopInteract(); }
 
 //Executed when the player presses the interact key (E). Only executes on server.
 void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
@@ -80,11 +107,37 @@ void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
 	DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 5); //Spawns a debugline to test
 	
 	if(Result.Actor == nullptr) return; //Trace didn't hit anything so end here
+	AActor* Actor = Cast<AActor>(Result.Actor);
+	if(Actor == nullptr) return;
+	
+	UE_LOG(LogTemp, Log, TEXT("Interacted class: %s"), *Result.Actor->GetClass()->GetName());
+
+	if(Result.Actor->ActorHasTag("pickup"))
+	{
+		IInteractInterface* Interface = Cast<IInteractInterface>(Result.Actor);
+		if(Interface)
+		{
+			Interface->Execute_OnInteract(Actor, this);
+			HeldItem = Actor;
+			return;
+		}
+	}
+	
+	
 	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
 	if(!HitTrigger) return; //Hit actor wasn't a trigger so end here
-	
 	HitTrigger->OnTrigger(this); //Hit actor was a trigger so tell it it's been triggered
 }
+
+void AMyCharacter::StopInteract_Implementation()
+{
+	IInteractInterface* Interface = Cast<IInteractInterface>(HeldItem);
+	if(Interface == nullptr) return;
+
+	Interface->Execute_OnStopInteract(HeldItem, this);
+	HeldItem = nullptr;
+}
+
 
 
 void AMyCharacter::MoveLeftRight(float Value)

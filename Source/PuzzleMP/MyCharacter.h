@@ -41,6 +41,8 @@ public:
 	float BaseLookUpRate;
 	
 private:
+	const int HoldDistance = 120;
+	
 	void MoveLeftRight(float value);
 	void MoveForwardBack(float value);
 	void LookLeftRight(float value);
@@ -48,9 +50,22 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void Interact(FVector CameraForwardVector);
+	UFUNCTION(Server, Reliable)
+	void StopInteract();
 
 	void InteractInit();
+	void StopInteractInit();
 
+	UPROPERTY(Replicated)
+	AActor* HeldItem;
+	UPROPERTY(Replicated)
+	FVector HeldItemPosition;
+
+	UPROPERTY(Replicated)
+	FVector CachedForwardVec;
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateCachedForwardVec(FVector ForwardVector);
+	
 	UPROPERTY(EditAnywhere, Category = "Camera")
 		UCameraComponent* PlayerCamera;
 };

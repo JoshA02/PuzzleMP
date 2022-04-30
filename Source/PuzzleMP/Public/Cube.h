@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CubeEnum.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
 #include "Cube.generated.h"
@@ -21,8 +22,10 @@ public:
 
 	UPROPERTY()
 	UBoxComponent* Trigger;
-
+	
 	void Destroy();
+
+	void ChangeCubeColour(FVector NewColour);
 	
 protected:
 	// Called when the game starts or when spawned
@@ -40,16 +43,21 @@ protected:
 	UPROPERTY(Replicated)
 	bool State = true; // true = Visible | false = Destroyed
 	const float StateChangeSpeed = 2.25; // 1/StateChangeSpeed = The duration taken to change states (visible/hidden)
-
+	
 	UFUNCTION()
 	void OnCurrentStateChange() const;
 	void UpdateCurrentState(const float NewState);
 	void ReflectStateChange() const;
+
+	UFUNCTION()
+	void OnCubeColourChange();
+	
+	UPROPERTY(ReplicatedUsing=OnCubeColourChange)
+	FVector CubeColour = FVector(1);
 	
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	bool IsBeingDestroyed();
-
 };

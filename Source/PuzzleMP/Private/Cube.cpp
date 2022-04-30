@@ -3,6 +3,7 @@
 
 #include "Cube.h"
 
+#include "CubeSpawner.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
@@ -48,6 +49,8 @@ void ACube::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetim
 	DOREPLIFETIME( ACube, CurrentState );
 	DOREPLIFETIME( ACube, BeingDestroyed );
 	DOREPLIFETIME( ACube, Destroyed );
+	DOREPLIFETIME( ACube, CubeColour );
+	DOREPLIFETIME( ACube, State );
 }
 
 // Called when the game starts or when spawned
@@ -57,6 +60,30 @@ void ACube::BeginPlay()
 	SetReplicateMovement(true);
 	CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
 }
+
+
+/* Public function used to change the CubeColour variable
+ *  This executes exclusively on the server
+ *  The CubeMaterial is manually updated here for the server, before being updated for the clients (within OnCubeColourChange)
+*/
+void ACube::ChangeCubeColour(FVector NewColour)
+{
+	if(!HasAuthority()) return; // Stop here if not server
+	
+	CubeColour = NewColour;
+	if(!CubeMaterial) CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
+	CubeMaterial->SetVectorParameterValue(FName("Colour"), NewColour);
+}
+
+/* Triggered automatically when the CubeColour variable is changed, then replicated to clients
+ *	This executes exclusively on clients
+*/
+void ACube::OnCubeColourChange()
+{
+	if(!CubeMaterial) CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
+	CubeMaterial->SetVectorParameterValue(FName("Colour"), CubeColour);
+}
+
 
 void ACube::Destroy()
 {
@@ -108,5 +135,3 @@ void ACube::ReflectStateChange() const
 }
 
 bool ACube::IsBeingDestroyed() { return BeingDestroyed; }
-
-

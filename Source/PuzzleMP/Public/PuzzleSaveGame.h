@@ -15,5 +15,5 @@ class PUZZLEMP_API UPuzzleSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
-	int LastLevel = 1;
+	int LastLevel = 2;
 };

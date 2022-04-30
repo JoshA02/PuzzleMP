@@ -16,13 +16,14 @@ ACubeSpawner::ACubeSpawner()
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("/Game/Meshes/General/SM_CubeSpawner.SM_CubeSpawner"));
 	if(MeshAsset.Succeeded()) Mesh->SetStaticMesh(MeshAsset.Object);
 	RootComponent = Mesh;
+	
 }
 
 // Called when the game starts or when spawned
 void ACubeSpawner::BeginPlay()
 {
 	Super::BeginPlay();
-
+	
 	if(!HasAuthority()) return;
 
 
@@ -43,7 +44,27 @@ void ACubeSpawner::SpawnObject()
 	if(MaxCubes > 0 && Cubes.Num() >= MaxCubes) Cubes[0]->Destroy();
 
 	const FVector SpawnLoc = GetActorLocation() + FVector(0,0,200);
-	Cubes.Add( GetWorld()->SpawnActor<ACube>(SpawnLoc, FRotator(0)) );
+
+	if(!CubeClass) return;
+	
+	ACube* NewCube = Cast<ACube>(GetWorld()->SpawnActor<ACube>(CubeClass.GetDefaultObject()->GetClass(), SpawnLoc, FRotator(0)));
+	if(!NewCube) return;
+	switch(CubeType)
+	{
+	case CubeEnum::CUBE_HOST:
+		NewCube->ChangeCubeColour(FVector(0.36, 0.4, 1));
+		break;
+	case CubeEnum::CUBE_CLIENT:
+		NewCube->ChangeCubeColour(FVector(0.49, 1, 0.47));
+		break;
+	case CubeEnum::CUBE_DEFAULT:
+		NewCube->ChangeCubeColour(FVector(1));
+		break;
+	default:
+		break;
+	}
+
+	Cubes.Add( NewCube );
 	
 	// Call a multicast function for things like sounds that want to be played for all players.
 }

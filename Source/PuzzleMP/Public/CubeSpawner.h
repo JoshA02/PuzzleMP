@@ -19,6 +19,9 @@ public:
 
 	UStaticMeshComponent* Mesh;
 
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	TEnumAsByte<CubeEnum> CubeType = CubeEnum::CUBE_DEFAULT;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -28,6 +31,9 @@ protected:
 
 	UPROPERTY(EditInstanceOnly, Category=Default)
 	float CubeSpawnRate = 5;
+
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	TSubclassOf<ACube> CubeClass;
 	
 private:
 	void SpawnObject();
