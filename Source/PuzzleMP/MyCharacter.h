@@ -46,7 +46,7 @@ public:
 	USceneComponent* PickupLocation;
 	
 private:
-	const int HoldDistance = 120;
+	const int HoldDistance = 180;
 	
 	void MoveLeftRight(float value);
 	void MoveForwardBack(float value);

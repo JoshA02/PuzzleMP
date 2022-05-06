@@ -18,18 +18,18 @@ public:
 	APickupableCube();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	void OnPickup(AActor* Caller);
+	void OnPickup(AActor* Caller, USceneComponent* ToAttach);
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
 	void OnPutdown(AActor* Caller);
 
 private:
 	virtual void BeginPlay() override;
 
-	void Pickup();
-	void Putdown();
-	
+	void Pickup(USceneComponent* ToAttach);
 	UFUNCTION(NetMulticast, Reliable)
-	void PickupMulticast();
+	void PickupMulticast(USceneComponent* ToAttach);
+
+	void Putdown();
 	UFUNCTION(NetMulticast, Reliable)
 	void PutdownMulticast();
 };

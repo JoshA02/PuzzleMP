@@ -105,6 +105,7 @@ void AObjExchangeStation::SetCollisionForActor(AActor* Actor, bool CollisionEnab
 
 void AObjExchangeStation::TriggerCheck(int TriggerIndex)
 {
+	/*
 	if(HeldItems.Find(TriggerIndex)) return; // If an item is already being held in this side, don't do anything
 	
 	const UBoxComponent* Trigger = Triggers[TriggerIndex];
@@ -131,5 +132,5 @@ void AObjExchangeStation::TriggerCheck(int TriggerIndex)
 		HeldItems.Add(TriggerIndex, OverlappingActor);
 
 		if(HeldItems.Num() >= 2) TargetAlpha = 1.0;
-	}
+	}*/
 }

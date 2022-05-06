@@ -8,14 +8,7 @@
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UPickupInterface : public UInterface
-{
-	GENERATED_BODY()
-};
-
-/**
- * 
- */
+class UPickupInterface : public UInterface { GENERATED_BODY() };
 class PUZZLEMP_API IPickupInterface
 {
 	GENERATED_BODY()
@@ -24,8 +17,7 @@ class PUZZLEMP_API IPickupInterface
 
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	// void OnPickup(AActor* Caller, USceneComponent* ToAttach);
-	void OnPickup(AActor* Caller);
+	void OnPickup(AActor* Caller, USceneComponent* ToAttach);
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
 	void OnPutdown(AActor* Caller);
 };

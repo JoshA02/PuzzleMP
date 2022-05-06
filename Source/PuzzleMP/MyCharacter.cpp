@@ -62,6 +62,54 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMyCharacter::StopInteractInit);
 }
 
+void AMyCharacter::Server_UpdateCachedForwardVec_Implementation(FVector ForwardVector) { CachedForwardVec = ForwardVector; }
+
+//Provides the server with the correct camera direction
+void AMyCharacter::InteractInit() { Interact(PlayerCamera->GetForwardVector()); }
+
+void AMyCharacter::StopInteractInit() { StopInteract(); }
+
+//Executed when the player presses the interact key (E). Only executes on server.
+void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
+{
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - Interact: Performing line trace"), true, true, FColor::Blue, 2);
+	FHitResult Result;
+	const FVector StartLocation = PlayerCamera->GetComponentLocation();
+	const FVector EndLocation = (CameraForwardVector*400) + PlayerCamera->GetComponentLocation();
+	FCollisionQueryParams CollisionParams(TEXT("TriggerTrace"), true, this);
+	CollisionParams.bReturnPhysicalMaterial = false;
+	
+	GetWorld()->LineTraceSingleByChannel(Result, StartLocation, EndLocation, ECC_WorldDynamic, CollisionParams); //Performs a line trace and stores the results in Result
+	// DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 5); //Spawns a debugline to test
+	
+	if(Result.Actor == nullptr) return; //Trace didn't hit anything so end here
+	AActor* Actor = Cast<AActor>(Result.Actor);
+	if(Actor == nullptr) return;
+
+	IPickupInterface* PickupInterface = Cast<IPickupInterface>(Result.Actor);
+	if(PickupInterface) // If the interacted object was a 'pickupable' object...
+	{
+		PickupInterface->Execute_OnPickup(Actor, this, PickupLocation);
+		HeldItem = Actor;
+		return;
+	}
+	
+	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
+	if(HitTrigger) // If the interacted object was a trigger...
+	{
+		HitTrigger->OnTrigger(this); // Hit actor was a trigger so tell it it's been triggered
+		return;
+	}
+}
+
+void AMyCharacter::StopInteract_Implementation()
+{
+	IPickupInterface* Interface = Cast<IPickupInterface>(HeldItem);
+	if(Interface == nullptr) return;
+
+	Interface->Execute_OnPutdown(HeldItem, this);
+}
+
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
 {
@@ -85,71 +133,16 @@ void AMyCharacter::Tick(float DeltaTime)
 	if(HeldItem == nullptr) return;
 	if(HeldItem->IsPendingKill()) return;
 	if(HeldItem->IsActorBeingDestroyed()) return;
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - HeldItem is valid"), true, true, FColor::Blue, 2);
+
+	// From here, held item is valid
 	
 	// If the server is not controlling this character and not running this code
 	if(!HasAuthority() && IsLocallyControlled()) Server_UpdateCachedForwardVec(PlayerCamera->GetForwardVector()); // Tell the server its forward vector (where it's facing)
 
 	// If the server is controlling this character and is running this code
 	if(HasAuthority() && IsLocallyControlled()) CachedForwardVec = PlayerCamera->GetForwardVector();
-
 	
-	// HeldItemPosition = this->GetActorLocation() + (CachedForwardVec * HoldDistance) + FVector(0, 0, 50);
-	// HeldItem->SetActorLocation(HeldItemPosition);
-
-	PickupLocation->SetWorldLocation(PlayerCamera->GetComponentLocation() + (CachedForwardVec * HoldDistance));
-
-	DrawDebugLine(GetWorld(), PlayerCamera->GetComponentLocation(), PickupLocation->GetComponentLocation(), FColor::Blue, true, 5); //Spawns a debugline to test
-}
-
-void AMyCharacter::Server_UpdateCachedForwardVec_Implementation(FVector ForwardVector) { CachedForwardVec = ForwardVector; }
-
-//Provides the server with the correct camera direction
-void AMyCharacter::InteractInit() { Interact(PlayerCamera->GetForwardVector()); }
-
-void AMyCharacter::StopInteractInit() { StopInteract(); }
-
-//Executed when the player presses the interact key (E). Only executes on server.
-void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
-{
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - Interact: Performing line trace"), true, true, FColor::Blue, 2);
-	FHitResult Result;
-	const FVector StartLocation = PlayerCamera->GetComponentLocation();
-	const FVector EndLocation = (CameraForwardVector*400) + PlayerCamera->GetComponentLocation();
-	FCollisionQueryParams CollisionParams(TEXT("TriggerTrace"), true, this);
-	CollisionParams.bReturnPhysicalMaterial = false;
-	
-	GetWorld()->LineTraceSingleByChannel(Result, StartLocation, EndLocation, ECC_WorldDynamic, CollisionParams); //Performs a line trace and stores the results in Result
-	DrawDebugLine(GetWorld(), StartLocation, Result.Location, FColor::Blue, true, 5); //Spawns a debugline to test
-	
-	if(Result.Actor == nullptr) return; //Trace didn't hit anything so end here
-	AActor* Actor = Cast<AActor>(Result.Actor);
-	if(Actor == nullptr) return;
-	
-	UE_LOG(LogTemp, Log, TEXT("Interacted class: %s"), *Result.Actor->GetClass()->GetName());
-
-	IPickupInterface* PickupInterface = Cast<IPickupInterface>(Result.Actor);
-	if(PickupInterface)
-	{
-		PickupInterface->Execute_OnPickup(Actor, this);
-		HeldItem->AttachToComponent(PickupLocation, FAttachmentTransformRules::KeepWorldTransform);
-		HeldItem = Actor;
-		return;
-	}
-	
-	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
-	if(!HitTrigger) return; // Hit actor wasn't a trigger so end here
-	HitTrigger->OnTrigger(this); // Hit actor was a trigger so tell it it's been triggered
-}
-
-void AMyCharacter::StopInteract_Implementation()
-{
-	IPickupInterface* Interface = Cast<IPickupInterface>(HeldItem);
-	if(Interface == nullptr) return;
-
-	Interface->Execute_OnPutdown(HeldItem, this);
-	HeldItem->DetachFromActor(FDetachmentTransformRules::KeepRelativeTransform);
-	HeldItem = nullptr;
+	PickupLocation->SetWorldLocation(PlayerCamera->GetComponentLocation() + (CachedForwardVec * HoldDistance) + FVector(0, 0, -50));
 }
 
 
