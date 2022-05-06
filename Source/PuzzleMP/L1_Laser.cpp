@@ -5,6 +5,10 @@
 
 #include "Cube.h"
 #include "MyCharacter.h"
+#include "MyGameStateBase.h"
+#include "MyPlayerController.h"
+#include "SavingUtils.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
@@ -39,8 +43,51 @@ void AL1_Laser::Disarm_Implementation()
 
 void AL1_Laser::OnTrigger(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if(!HasAuthority()) return;
 	AMyCharacter* Character = Cast<AMyCharacter>(OtherActor);
 	ACube* Cube = Cast<ACube>(OtherActor);
-	if(Character) Character->LaunchCharacter(Arrow->GetForwardVector() * LaunchStrength, false, false);
+	if(Character)
+	{
+		if(!DoesKill)
+		{
+			Character->LaunchCharacter(Arrow->GetForwardVector() * LaunchStrength, false, false); // If not killing, just launch the player
+		}
+
+		if(DoesKill)
+		{
+			AMyPlayerController* PC = Cast<AMyPlayerController>(Character->GetController());
+			if(!PC) return;
+			PC->Owner_FadeHUDToBlack(); // Fade to black
+			
+			FTimerHandle UnusedHandle;
+			FTimerDelegate TimerDel;
+			TimerDel.BindUObject(this, &AL1_Laser::RespawnAndFadeBack, Character);
+			GetWorldTimerManager().SetTimer(UnusedHandle, TimerDel, 2, false);
+		}
+	}
 	if(Cube) Cube->Destroy();
+}
+
+// Triggered via a timer, 2 seconds after fading to black.
+void AL1_Laser::RespawnAndFadeBack(AMyCharacter* Character)
+{
+	if(!HasAuthority()) return; // Only execute for server
+
+	const AMyGameStateBase* GameState = Cast<AMyGameStateBase>(UGameplayStatics::GetGameState(GetWorld()));
+	if(!GameState)
+	{
+		UE_LOG(LogTemp, Error, TEXT("L1_Laser: GameState undefined"));
+		return;	
+	}
+	int PlayerIndex = GameState->PlayerArray.Find(Character->GetPlayerState());
+	if(!PlayerIndex)
+	{
+		UE_LOG(LogTemp, Error, TEXT("L1_Laser: PlayerIndex undefined"));
+		PlayerIndex = 0;
+	}
+	Character->SetActorTransform(SavingUtils::GetSpawnLocations()[PlayerIndex]);
+	
+	AMyPlayerController* PC = Cast<AMyPlayerController>(Character->GetController());
+	if(!PC) return;
+	PC->Owner_FadeHUDFromBlack(); // Fade from black
 }

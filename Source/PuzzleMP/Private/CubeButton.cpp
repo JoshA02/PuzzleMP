@@ -40,6 +40,7 @@ void ACubeButton::TriggerOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 {
 	if(!HasAuthority()) return; // Don't execute for non-server clients
 	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return; // Don't continue if actor doesn't meet requirements
+	if(RequiredPresserTag.GetStringLength() > 0 && !RequiredPresserTag.IsEqual(FName("None"), ENameCase::IgnoreCase) && !OtherActor->ActorHasTag(RequiredPresserTag)) return; // Don't continue if actor doesn't have required tag
 	State = true;
 	ReflectStateChange(); // Reflect the state change for the server
 }
@@ -48,6 +49,7 @@ void ACubeButton::TriggerStop(UPrimitiveComponent* OverlappedComponent, AActor* 
 {
 	if(!HasAuthority()) return; // Don't execute for non-server clients
 	if(RequiredPresserType && !OtherActor->GetClass()->IsChildOf(RequiredPresserType)) return; // Don't continue if actor doesn't meet requirements
+	if(RequiredPresserTag.GetStringLength() > 0 && !RequiredPresserTag.IsEqual(FName("None"), ENameCase::IgnoreCase) && !OtherActor->ActorHasTag(RequiredPresserTag)) return; // Don't continue if actor doesn't have required tag
 	State = false;
 	ReflectStateChange(); // Reflect the state change for the server
 }

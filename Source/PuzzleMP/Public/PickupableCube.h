@@ -5,11 +5,12 @@
 #include "CoreMinimal.h"
 #include "Cube.h"
 #include "InteractInterface.h"
+#include "PickupInterface.h"
 #include "PickupableCube.generated.h"
 
 
 UCLASS()
-class PUZZLEMP_API APickupableCube : public ACube, public IInteractInterface
+class PUZZLEMP_API APickupableCube : public ACube, public IPickupInterface
 {
 	GENERATED_BODY()
 
@@ -17,9 +18,9 @@ public:
 	APickupableCube();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	void OnInteract(AActor* Caller);
+	void OnPickup(AActor* Caller);
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category=Interaction)
-	void OnStopInteract(AActor* Caller);
+	void OnPutdown(AActor* Caller);
 
 private:
 	virtual void BeginPlay() override;

@@ -52,9 +52,11 @@ void ACubeSpawner::SpawnObject()
 	switch(CubeType)
 	{
 	case CubeEnum::CUBE_HOST:
+		NewCube->Tags.Add("HostCube");
 		NewCube->ChangeCubeColour(FVector(0.36, 0.4, 1));
 		break;
 	case CubeEnum::CUBE_CLIENT:
+		NewCube->Tags.Add("ClientCube");
 		NewCube->ChangeCubeColour(FVector(0.49, 1, 0.47));
 		break;
 	case CubeEnum::CUBE_DEFAULT:

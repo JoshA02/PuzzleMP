@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MyCharacter.h"
 #include "Components/ArrowComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
@@ -36,9 +37,15 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category=Default)
 	float LaunchStrength = 1000;
+
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	bool DoesKill = false;
 	
 	UFUNCTION()
 	void OnTrigger(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void RespawnAndFadeBack(AMyCharacter* Character);
 
 public:
 	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)

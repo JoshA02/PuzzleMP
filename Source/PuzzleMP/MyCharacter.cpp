@@ -26,6 +26,9 @@ AMyCharacter::AMyCharacter()
 	PlayerCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	PlayerCamera->SetupAttachment(RootComponent);
 	PlayerCamera->bUsePawnControlRotation = true;
+
+	PickupLocation = CreateDefaultSubobject<USceneComponent>(FName("Pickup Location"));
+	PickupLocation->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 void AMyCharacter::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
@@ -44,35 +47,6 @@ void AMyCharacter::BeginPlay()
 	UVOIPStatics::SetMicThreshold(-5);
 }
 
-// Called every frame
-void AMyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	
-
-	/* Held Item Stuff
-	 * This section moves the (replicated) HeldItem to the (replicated) HeldItemPosition.
-	*/
-	if(HeldItem == nullptr) return;
-	if(HeldItem->IsPendingKill()) return;
-	if(HeldItem->IsActorBeingDestroyed()) return;
-	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - HeldItem is valid"), true, true, FColor::Blue, 2);
-	
-	// If the server is not controlling this character and not running this code
-	if(!HasAuthority() && IsLocallyControlled()) Server_UpdateCachedForwardVec(PlayerCamera->GetForwardVector()); // Tell the server its forward vector (where it's facing)
-
-	// If the server is controlling this character and is running this code
-	if(HasAuthority() && IsLocallyControlled()) CachedForwardVec = PlayerCamera->GetForwardVector();
-
-	
-	HeldItemPosition = this->GetActorLocation() + (CachedForwardVec * HoldDistance) + FVector(0, 0, 50);
-	
-	HeldItem->SetActorLocation(HeldItemPosition);
-}
-
-void AMyCharacter::Server_UpdateCachedForwardVec_Implementation(FVector ForwardVector) { CachedForwardVec = ForwardVector; }
-
-
 // Called to bind functionality to input
 void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -87,6 +61,48 @@ void AMyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::InteractInit);
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMyCharacter::StopInteractInit);
 }
+
+// Called every frame
+void AMyCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+
+	/* Held Item Stuff
+	 * This section moves the (replicated) HeldItem to the (replicated) HeldItemPosition.
+	*/
+
+	if(!HeldItem) return;
+
+	
+	// if(HeldItem->GetAttachParentActor() != this)
+	if(!HeldItem->IsAttachedTo(this))
+	{
+		UE_LOG(LogTemp, Log, TEXT("HeldItem is no longer attached, set HeldItem to null"));
+		HeldItem = nullptr;
+	}
+	
+	if(HeldItem == nullptr) return;
+	if(HeldItem->IsPendingKill()) return;
+	if(HeldItem->IsActorBeingDestroyed()) return;
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("MyCharacter - HeldItem is valid"), true, true, FColor::Blue, 2);
+	
+	// If the server is not controlling this character and not running this code
+	if(!HasAuthority() && IsLocallyControlled()) Server_UpdateCachedForwardVec(PlayerCamera->GetForwardVector()); // Tell the server its forward vector (where it's facing)
+
+	// If the server is controlling this character and is running this code
+	if(HasAuthority() && IsLocallyControlled()) CachedForwardVec = PlayerCamera->GetForwardVector();
+
+	
+	// HeldItemPosition = this->GetActorLocation() + (CachedForwardVec * HoldDistance) + FVector(0, 0, 50);
+	// HeldItem->SetActorLocation(HeldItemPosition);
+
+	PickupLocation->SetWorldLocation(PlayerCamera->GetComponentLocation() + (CachedForwardVec * HoldDistance));
+
+	DrawDebugLine(GetWorld(), PlayerCamera->GetComponentLocation(), PickupLocation->GetComponentLocation(), FColor::Blue, true, 5); //Spawns a debugline to test
+}
+
+void AMyCharacter::Server_UpdateCachedForwardVec_Implementation(FVector ForwardVector) { CachedForwardVec = ForwardVector; }
 
 //Provides the server with the correct camera direction
 void AMyCharacter::InteractInit() { Interact(PlayerCamera->GetForwardVector()); }
@@ -112,29 +128,27 @@ void AMyCharacter::Interact_Implementation(FVector CameraForwardVector)
 	
 	UE_LOG(LogTemp, Log, TEXT("Interacted class: %s"), *Result.Actor->GetClass()->GetName());
 
-	if(Result.Actor->ActorHasTag("pickup"))
+	IPickupInterface* PickupInterface = Cast<IPickupInterface>(Result.Actor);
+	if(PickupInterface)
 	{
-		IInteractInterface* Interface = Cast<IInteractInterface>(Result.Actor);
-		if(Interface)
-		{
-			Interface->Execute_OnInteract(Actor, this);
-			HeldItem = Actor;
-			return;
-		}
+		PickupInterface->Execute_OnPickup(Actor, this);
+		HeldItem->AttachToComponent(PickupLocation, FAttachmentTransformRules::KeepWorldTransform);
+		HeldItem = Actor;
+		return;
 	}
 	
-	
 	ATrigger* HitTrigger = Cast<ATrigger>(Result.Actor);
-	if(!HitTrigger) return; //Hit actor wasn't a trigger so end here
-	HitTrigger->OnTrigger(this); //Hit actor was a trigger so tell it it's been triggered
+	if(!HitTrigger) return; // Hit actor wasn't a trigger so end here
+	HitTrigger->OnTrigger(this); // Hit actor was a trigger so tell it it's been triggered
 }
 
 void AMyCharacter::StopInteract_Implementation()
 {
-	IInteractInterface* Interface = Cast<IInteractInterface>(HeldItem);
+	IPickupInterface* Interface = Cast<IPickupInterface>(HeldItem);
 	if(Interface == nullptr) return;
 
-	Interface->Execute_OnStopInteract(HeldItem, this);
+	Interface->Execute_OnPutdown(HeldItem, this);
+	HeldItem->DetachFromActor(FDetachmentTransformRules::KeepRelativeTransform);
 	HeldItem = nullptr;
 }
 
@@ -156,4 +170,6 @@ void AMyCharacter::LookUpDown(float Value)
 {
 	if(Value) AddControllerPitchInput(Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
+
+AActor* AMyCharacter::GetHeldItem() { return HeldItem; }
 

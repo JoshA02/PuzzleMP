@@ -14,35 +14,34 @@ APickupableCube::APickupableCube()
 
 void APickupableCube::BeginPlay() { Super::BeginPlay(); }
 
-void APickupableCube::OnInteract_Implementation(AActor* Player)
+
+void APickupableCube::OnPickup_Implementation(AActor* Player)
 {
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("APickupableCube - Pickup"), true, true, FColor::Blue, 2);
 	Pickup();
 	PickupMulticast();
 }
-
-void APickupableCube::OnStopInteract_Implementation(AActor* Player)
+void APickupableCube::OnPutdown_Implementation(AActor* Player)
 {
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("APickupableCube - End Pickup"), true, true, FColor::Blue, 2);
 	Putdown();
 	PutdownMulticast();
 }
-
 void APickupableCube::PickupMulticast_Implementation() { Pickup(); }
 void APickupableCube::PutdownMulticast_Implementation() { Putdown(); }
-
-void APickupableCube::Pickup()
+void APickupableCube::Pickup() // Add a component variable here to attach to
 {
+	this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	CubeMesh->SetEnableGravity(false);
 	CubeMesh->SetSimulatePhysics(false);
 	CubeMesh->CanCharacterStepUpOn = ECB_No;
-	SetActorEnableCollision(false);
+	CubeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
-
 void APickupableCube::Putdown()
 {
+    this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	CubeMesh->SetEnableGravity(true);
 	CubeMesh->SetSimulatePhysics(true);
 	CubeMesh->CanCharacterStepUpOn = ECB_No;
-	SetActorEnableCollision(true);
+	CubeMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 }

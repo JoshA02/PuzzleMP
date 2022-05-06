@@ -39,6 +39,11 @@ public:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
+
+	AActor* GetHeldItem();
+
+	UPROPERTY(EditDefaultsOnly, Category=Pickup)
+	USceneComponent* PickupLocation;
 	
 private:
 	const int HoldDistance = 120;

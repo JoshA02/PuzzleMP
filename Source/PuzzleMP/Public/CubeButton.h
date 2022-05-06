@@ -29,6 +29,9 @@ protected:
 	UPROPERTY(EditInstanceOnly, Category=Default)
 	TSubclassOf<AActor> RequiredPresserType;
 
+	UPROPERTY(EditInstanceOnly, Category=Default)
+	FName RequiredPresserTag = "";
+
 	UPROPERTY(ReplicatedUsing=OnChangeState)
 	bool State = false;
 	UFUNCTION()
