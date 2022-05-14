@@ -23,14 +23,17 @@ protected:
 	UPROPERTY()
 	TArray<UStaticMeshComponent*> BodyMeshes;
 
-	UPROPERTY()
+	UPROPERTY(EditInstanceOnly)
 	TArray<UBoxComponent*> Triggers;
 	
 	UPROPERTY(EditInstanceOnly, Category=Default)
 	TMap<TSubclassOf<AActor>, FVector> ObjectFilter;
 
-	UPROPERTY()
+	UPROPERTY(EditInstanceOnly)
 	TArray<USceneComponent*> ItemHolders;
+
+	UPROPERTY(EditInstanceOnly)
+	TArray<USceneComponent*> MovingItemHolders;
 
 	TMap<int, AActor*> HeldItems; // Index | Actor being held
 
@@ -40,11 +43,6 @@ protected:
 	float Alpha = TargetAlpha;
 
 	void TriggerCheck(int TriggerIndex);
-
-
-	void SetCollisionForActor(AActor* Actor, bool CollisionEnabled);
-	UFUNCTION(NetMulticast, Reliable)
-	void SetCollisionForActor_Multicast(AActor* Actor, bool CollisionEnabled);
 
 public:	
 	// Called every frame

@@ -43,6 +43,10 @@ TArray<FTransform> SavingUtils::GetSpawnLocations()
 		SpawnA = FTransform(FRotator(-5, -254, 0), FVector(-2462, 2706, 250.5), FVector(1));
 		SpawnB = FTransform(FRotator(-5, -275, 0), FVector(-3319, 2703, 250.5), FVector(1));
 		break;
+	case 3:
+		SpawnA = FTransform(FRotator(0, -180, 0), FVector(-3780.831299, 5895.527344, 1330.134399), FVector(1));
+		SpawnB = FTransform(FRotator(0, -180, 0), FVector(-3780.831299, 5058.814453, 284.134399), FVector(1));
+		break; 
 	default:
 		break;
 	}

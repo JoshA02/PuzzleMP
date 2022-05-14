@@ -3,13 +3,13 @@
 
 #include "ObjExchangeStation.h"
 
-#include "InteractInterface.h"
 #include "PickupInterface.h"
 #include "GameFramework/GameStateBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "PuzzleMP/MyCharacter.h"
+#include "PuzzleMP/Trigger.h"
 
 // Sets default values
 AObjExchangeStation::AObjExchangeStation()
@@ -46,6 +46,11 @@ AObjExchangeStation::AObjExchangeStation()
 		ItemHolders[x]->AttachToComponent(Triggers[x], FAttachmentTransformRules::KeepRelativeTransform);
 		ItemHolders[x]->SetRelativeScale3D(FVector(0.4));
 	}
+
+	MovingItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("MovingItemHolder01")));
+	MovingItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("MovingItemHolder02")));
+	for(int x = 0; x < MovingItemHolders.Num(); x++)
+		MovingItemHolders[x]->AttachToComponent(ItemHolders[x], FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 // Called when the game starts or when spawned
@@ -64,73 +69,60 @@ void AObjExchangeStation::Tick(float DeltaTime)
 	
 	for(int x = 0; x < Triggers.Num(); x++) TriggerCheck(x);
 	
-/*
-	for(TPair<int, AActor*> HeldItem : HeldItems)
-	{
-		AActor* Actor = HeldItem.Value;
-		if( !Actor->GetAttachParentActor() || Actor->GetAttachParentActor() != this)
-		{
-			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Not attached to this. Remove from HeldItems"), true, true, FColor::Blue, 2);
-			HeldItems.Remove(HeldItem.Key); // Item is no longer attached to the station, remove it from HeldItems
-			continue;
-		}
-		// SetCollisionForActor(Actor, AllowPickup);
-		// SetCollisionForActor_Multicast(Actor, AllowPickup);
-	}*/
-
-	
 	AllowPickup = TargetAlpha == Alpha; // Allow pickup when the actors are NOT being transferred
 	// UKismetSystemLibrary::PrintString(GetWorld(), (TEXT("AllowPickup: %s"), *FString::SanitizeFloat(AllowPickup)), true, true, FColor::Blue, 2);
 	
-	
 	if(TargetAlpha > Alpha) Alpha = FMath::Clamp(Alpha = Alpha + DeltaTime, 0.0f, 1.0f);
 	if(TargetAlpha < Alpha) Alpha = FMath::Clamp(Alpha = Alpha - DeltaTime, 0.0f, 1.0f);
+
+	
+/*	if(TargetAlpha == 1.0f && Alpha == TargetAlpha && HeldItems.Num() == 0)
+	{
+		// Reset moving holder locations when neither side has a HeldItem
+		TargetAlpha = 0.0f;
+		Alpha = 0.0f;
+		
+		return;
+	}*/
 	
 	if(HeldItems.Num() < 2) return;
 
 	// Swapping...
 	for(int x = 0; x < BodyMeshes.Num(); x++)
 	{
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Swapping..."), true, true, FColor::Blue, 2);
+
 		const int OtherX = (x == 0 ? 1 : 0);
 		FVector NewLocation = FMath::Lerp(ItemHolders[x]->GetComponentLocation(), ItemHolders[OtherX]->GetComponentLocation(), Alpha);
-		AActor* Actor = *HeldItems.Find(x);
-		Actor->SetActorLocation(NewLocation);
+		UE_LOG(LogTemp, Log, TEXT("NewLoc: %s"), *NewLocation.ToString());
+		MovingItemHolders[x]->SetIsReplicated(true);
+		MovingItemHolders[x]->SetWorldLocation(NewLocation);
+	}
+
+	for(TPair<int, AActor*> HeldItem : HeldItems)
+	{
+		if(HeldItem.Value->GetAttachParentActor() != this) HeldItems.Remove(HeldItem.Key);
 	}
 }
 
-void AObjExchangeStation::SetCollisionForActor_Multicast_Implementation(AActor* Actor, bool CollisionEnabled) { SetCollisionForActor(Actor, CollisionEnabled); }
-void AObjExchangeStation::SetCollisionForActor(AActor* Actor, bool CollisionEnabled) { Actor->SetActorEnableCollision(CollisionEnabled); }
-
-
-
 void AObjExchangeStation::TriggerCheck(int TriggerIndex)
 {
-	/*
-	if(HeldItems.Find(TriggerIndex)) return; // If an item is already being held in this side, don't do anything
-	
-	const UBoxComponent* Trigger = Triggers[TriggerIndex];
-	TArray<TSubclassOf<AActor>> AllowedClasses;
-	ObjectFilter.GetKeys(AllowedClasses);
-	
+	UBoxComponent* Trigger = Triggers[TriggerIndex];
+	if(!Trigger) return;
+
 	TArray<AActor*> OverlappingActors;
 	Trigger->GetOverlappingActors(OverlappingActors);
-	if(OverlappingActors.Num() <= 0) return;
-	
-	for(AActor* OverlappingActor : OverlappingActors)
+	for(AActor* Actor : OverlappingActors)
 	{
-		if(!ObjectFilter.Contains(OverlappingActor->GetClass())) continue; // Ensure the item's contained in the filter TMap
-
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Item placed in exchange"), true, true, FColor::Blue, 2);
-
-		// If the item is 'pickupable', execute the OnTrigger function to trigger the Pickup functionality
-		IPickupInterface* PickupInterface = Cast<IPickupInterface>(OverlappingActor);
-		PickupInterface->Execute_OnPickup(OverlappingActor, this);
-		
-		OverlappingActor->AttachToComponent(ItemHolders[TriggerIndex], FAttachmentTransformRules::SnapToTargetIncludingScale); // Snap actor to scene component
-		const FVector* DesiredScale = ObjectFilter.Find(OverlappingActor->GetClass()); // Get the actor's desired exchange scale
-		ItemHolders[TriggerIndex]->SetRelativeScale3D(*DesiredScale); // Set the scale
-		HeldItems.Add(TriggerIndex, OverlappingActor);
-
-		if(HeldItems.Num() >= 2) TargetAlpha = 1.0;
-	}*/
+		if(!ObjectFilter.Contains(Actor->GetClass())) return;
+		if(Actor->GetAttachParentActor() != nullptr) return;
+		UE_LOG(LogTemp, Log, TEXT("Actor in station"));
+		IPickupInterface* PickupInterface = Cast<IPickupInterface>(Actor);
+		if(!PickupInterface) return;
+		USceneComponent* ItemHolder = MovingItemHolders[TriggerIndex];
+		PickupInterface->Execute_OnPickup(Actor, this, ItemHolder);
+	
+		HeldItems.Add(TriggerIndex, Actor);
+		if(HeldItems.Num() >= 2) TargetAlpha = 1.0f;
+	}
 }

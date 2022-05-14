@@ -20,6 +20,8 @@ public:
 
 	int GetPlatformNumber();
 
+	void SetPlatformNumber(int NewNumber);
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -29,10 +31,11 @@ protected:
 	float Alpha = TargetAlpha;
 	UPROPERTY(Replicated)
 	bool bDoneMoving = true;
-	UPROPERTY(Replicated)
-	int MoveState = 0;
 
-	UPROPERTY(EditInstanceOnly)
+
+	UFUNCTION()
+	void OnChangePlatformNumber();
+	UPROPERTY(EditInstanceOnly, ReplicatedUsing=OnChangePlatformNumber)
 	int PlatformNumber = 0;
 
 	UPROPERTY(EditInstanceOnly)
@@ -43,6 +46,8 @@ protected:
 
 	UPROPERTY(EditInstanceOnly)
 	UStaticMeshComponent* NumberPanel;
+	UMaterialInstanceDynamic* NumberPanelMaterial;
+	UMaterialInstanceDynamic* GetNumberPanelMaterial();
 
 public:	
 	// Called every frame
@@ -51,8 +56,6 @@ public:
 	void ExtendPlatform();
 	void RetractPlatform();
 
-	bool IsDoneMoving();
-	int GetMoveState();
 
 	FOnRetract OnRetractDelegate;
 };

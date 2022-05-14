@@ -119,22 +119,18 @@ void AMyCharacter::Tick(float DeltaTime)
 	/* Held Item Stuff
 	 * This section moves the (replicated) HeldItem to the (replicated) HeldItemPosition.
 	*/
-
 	if(!HeldItem) return;
-
 	
-	// if(HeldItem->GetAttachParentActor() != this)
 	if(!HeldItem->IsAttachedTo(this))
 	{
 		UE_LOG(LogTemp, Log, TEXT("HeldItem is no longer attached, set HeldItem to null"));
 		HeldItem = nullptr;
 	}
-	
+
+	// Makes sure HeldItem is valid before accessing it
 	if(HeldItem == nullptr) return;
 	if(HeldItem->IsPendingKill()) return;
 	if(HeldItem->IsActorBeingDestroyed()) return;
-
-	// From here, held item is valid
 	
 	// If the server is not controlling this character and not running this code
 	if(!HasAuthority() && IsLocallyControlled()) Server_UpdateCachedForwardVec(PlayerCamera->GetForwardVector()); // Tell the server its forward vector (where it's facing)

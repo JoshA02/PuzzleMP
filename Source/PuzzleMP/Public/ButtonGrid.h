@@ -54,6 +54,8 @@ protected:
 
 	int PlatformsPending = 0; // The amount of platforms that haven't yet retracted back
 
+	void RandomisePlatformNumbers();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
