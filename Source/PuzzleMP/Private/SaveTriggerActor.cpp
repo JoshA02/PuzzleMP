@@ -5,6 +5,7 @@
 
 #include "SavingUtils.h"
 #include "Components/BoxComponent.h"
+#include "GameFramework/Character.h"
 #include "Kismet/KismetSystemLibrary.h"
 
 // Sets default values
@@ -31,6 +32,7 @@ void ASaveTriggerActor::BeginPlay()
 void ASaveTriggerActor::OnPlayerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if(!HasAuthority()) return; // Only continue if host
+	if(!Cast<ACharacter>(OtherActor)) return; // Only continue if overlapped actor was a character
 
 	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Overlapped SaveTrigger"), true, true, FColor::Blue, 2);
 	
