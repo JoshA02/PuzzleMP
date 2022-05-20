@@ -17,9 +17,6 @@ public:
 	AObjExchangeStation();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 	UPROPERTY()
 	TArray<UStaticMeshComponent*> BodyMeshes;
 
@@ -30,19 +27,21 @@ protected:
 	TMap<TSubclassOf<AActor>, FVector> ObjectFilter;
 
 	UPROPERTY(EditInstanceOnly)
-	TArray<USceneComponent*> ItemHolders;
+	TArray<USceneComponent*> ItemLocations;
 
 	UPROPERTY(EditInstanceOnly)
 	TArray<USceneComponent*> MovingItemHolders;
 
+	UPROPERTY()
 	TMap<int, AActor*> HeldItems; // Index | Actor being held
-
-	bool AllowPickup;
 	
 	float TargetAlpha = 0.0f;
 	float Alpha = TargetAlpha;
 
 	void TriggerCheck(int TriggerIndex);
+	void SetupItemsForMovement();
+	UFUNCTION(NetMulticast, Reliable)
+	void SetHolderLocation(USceneComponent* Holder, FVector NewLocation);
 
 public:	
 	// Called every frame

@@ -44,6 +44,12 @@ protected:
 	TArray<ATrigger*> Triggers;
 
 	int GetRandomButtonIndex() const;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void PlayButtonSoundMulticast(float Pitch);
+
+	USoundBase*PressSound;
+	USoundAttenuation* ButtonPressSoundAttenuation;
 	
 private:
 	UMaterialInstanceDynamic* ButtonMaterial;

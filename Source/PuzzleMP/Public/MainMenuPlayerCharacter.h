@@ -57,6 +57,9 @@ protected:
 	int LevelNumberToLoad = 0;
 	void SpawnNewCharactersAndPossess();
 
+	USoundBase* JoinSound;
+	USoundBase* CantStartSound;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

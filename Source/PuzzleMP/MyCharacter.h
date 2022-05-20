@@ -25,6 +25,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly)
 	UVOIPTalker* VOIPRef;
 
+	USoundBase* FootstepSound;
+	FVector LastFootstepLocation;
+	USoundAttenuation* FootstepSoundAtt;
+	TSubclassOf<UMatineeCameraShake> WalkShake;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;

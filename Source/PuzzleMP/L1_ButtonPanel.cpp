@@ -33,6 +33,11 @@ AL1_ButtonPanel::AL1_ButtonPanel()
 	ButtonLocations[1] = Button2Location;
 	ButtonLocations[2] = Button3Location;
 	ButtonLocations[3] = Button4Location;
+
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> ButtonPressSoundAtt (TEXT("/Game/Audio/ButtonAttenuation.ButtonAttenuation"));
+	if(ButtonPressSoundAtt.Succeeded()) ButtonPressSoundAttenuation = ButtonPressSoundAtt.Object;
+	static ConstructorHelpers::FObjectFinder<USoundBase> ButtonPressSoundAsset(TEXT("/Game/Audio/Wavs/sfx_3p_buttonpress.sfx_3p_buttonpress"));
+	if(ButtonPressSoundAsset.Succeeded()) PressSound = ButtonPressSoundAsset.Object;
 }
 
 void AL1_ButtonPanel::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
@@ -110,6 +115,7 @@ void AL1_ButtonPanel::StartPuzzle()
 void AL1_ButtonPanel::FlashLights()
 {
 	if(!HasAuthority()) return;
+	PlayButtonSoundMulticast(0.9);
 	if(IntroLightLoopCount >= (IntroLightLoops - 1) * 2 )
 	{
 		GetWorldTimerManager().ClearTimer(IntroLights);
@@ -164,6 +170,7 @@ void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* Triggered
 	{
 		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("OnButtonPressed: Pressed a lit button"), true, false, FColor::Blue, 2);
 		//TODO: Possibly play a dull tone to indicate that nothing happened, but to still give button feedback to the player.
+		PlayButtonSoundMulticast(0.2);
 		return;
 	}
 	if(!ButtonLit)
@@ -182,6 +189,8 @@ void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* Triggered
 		{
 			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Puzzle complete"), true, true, FColor::Blue, 2);
 
+			PlayButtonSoundMulticast(1.4);
+
 			Laser->Disarm();
 			OtherButtonPanel->Laser->Disarm();
 
@@ -193,6 +202,7 @@ void AL1_ButtonPanel::OnButtonPressed(AActor* TriggeringActor, AActor* Triggered
 			
 			return;
 		}
+		PlayButtonSoundMulticast(1.2);
 		const int RandomIndex = GetRandomButtonIndex();
 		SetButtonState(RandomIndex, true); //Turns on a random light on this panel
 		LastLitButtonIndex = RandomIndex;
@@ -242,4 +252,7 @@ void AL1_ButtonPanel::ReflectStateChange()
 	
 }
 
-
+void AL1_ButtonPanel::PlayButtonSoundMulticast_Implementation(float Pitch)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), PressSound, GetActorLocation(), FRotator(0), 1, Pitch, 0, ButtonPressSoundAttenuation);
+}

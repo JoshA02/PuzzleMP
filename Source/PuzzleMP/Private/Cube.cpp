@@ -4,6 +4,7 @@
 #include "Cube.h"
 
 #include "CubeSpawner.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
@@ -40,6 +41,11 @@ ACube::ACube()
 	Trigger->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	Trigger->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 
+	static ConstructorHelpers::FObjectFinder<USoundBase> SoundAsset(TEXT("/Game/HorrorEngine/Audio/Environment/MetalHit_Cue.MetalHit_Cue"));
+	if(SoundAsset.Succeeded()) HitSound = SoundAsset.Object;
+
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> HitSoundAtt (TEXT("/Game/Audio/HitAttenuation.HitAttenuation"));
+	if(HitSoundAtt.Succeeded()) HitSoundAttAsset = HitSoundAtt.Object;
 }
 
 void ACube::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
@@ -59,6 +65,8 @@ void ACube::BeginPlay()
 	Super::BeginPlay();
 	SetReplicateMovement(true);
 	CubeMaterial = CubeMesh->CreateDynamicMaterialInstance(0);
+	Trigger->SetNotifyRigidBodyCollision(true); // Allows cube to check for hits
+	Trigger->OnComponentHit.AddDynamic(this, &ACube::OnHit); // Binds OnHit function to OnComponentHit delegate
 }
 
 
@@ -96,7 +104,7 @@ void ACube::Destroy()
 void ACube::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 	if(!HasAuthority()) return; // Unnecessary to execute on non-server clients
 
 	
@@ -135,3 +143,11 @@ void ACube::ReflectStateChange() const
 }
 
 bool ACube::IsBeingDestroyed() { return BeingDestroyed; }
+
+void ACube::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+{
+	const float Dist = (NormalImpulse - LastNI).Size();
+	// UE_LOG(LogTemp, Log, TEXT("HIT; Dist: %s"),  *FString::SanitizeFloat(Dist));
+	if(Dist > 500) if(HitSound) UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), FRotator(0), 1, 1, 0, HitSoundAttAsset);
+	LastNI = NormalImpulse;
+}

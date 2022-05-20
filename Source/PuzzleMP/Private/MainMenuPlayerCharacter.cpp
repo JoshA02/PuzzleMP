@@ -23,6 +23,12 @@ AMainMenuPlayerCharacter::AMainMenuPlayerCharacter()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(FName("Camera"));
 	RootComponent = Camera;
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> SoundAsset(TEXT("/Game/Audio/Wavs/sfx_1p_playerjoin.sfx_1p_playerjoin"));
+	if(SoundAsset.Succeeded()) JoinSound = SoundAsset.Object;
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> NoPlayerSoundAsset(TEXT("/Game/Audio/Wavs/sfx_1p_cantstart.sfx_1p_cantstart"));
+	if(NoPlayerSoundAsset.Succeeded()) CantStartSound = NoPlayerSoundAsset.Object;
 }
 
 void AMainMenuPlayerCharacter::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
@@ -56,7 +62,15 @@ void AMainMenuPlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if(HasAuthority()) { CanStart = UGameplayStatics::GetGameState(GetWorld())->PlayerArray.Num() > 1; }
+	if(HasAuthority())
+	{
+		const bool NewValue = UGameplayStatics::GetGameState(GetWorld())->PlayerArray.Num() > 1;
+		if(CanStart != NewValue)
+		{
+			CanStart = NewValue;
+			if(CanStart) UGameplayStatics::PlaySound2D(GetWorld(), JoinSound);
+		}
+	}
 
 	if(DoorPanels.Num() < 2) return; // Have DoorPanels[0] and [1] been defined? If not, stop here.
 	
@@ -127,6 +141,7 @@ void AMainMenuPlayerCharacter::Select()
 	{
 	case 0: // If hitting enter on "begin" door
 		if(!HasAuthority()) return;
+		if(!CanStart) UGameplayStatics::PlaySound2D(GetWorld(), CantStartSound, 0.4);
 		if(CanStart)
 		{
 			CanSelect = false; // Stops user from pressing ENTER whilst transitioning to new level

@@ -3,6 +3,7 @@
 
 #include "ButtonGrid.h"
 
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "PuzzleMP/Trigger.h"
 
@@ -31,6 +32,11 @@ AButtonGrid::AButtonGrid()
 
 	// Sets the BodyMesh as the root component of the actor
 	RootComponent = BodyMesh;
+
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> ButtonPressSoundAtt (TEXT("/Game/Audio/ButtonAttenuation.ButtonAttenuation"));
+	if(ButtonPressSoundAtt.Succeeded()) ButtonPressSoundAttenuation = ButtonPressSoundAtt.Object;
+	static ConstructorHelpers::FObjectFinder<USoundBase> ButtonPressSoundAsset(TEXT("/Game/Audio/Wavs/sfx_3p_buttonpress.sfx_3p_buttonpress"));
+	if(ButtonPressSoundAsset.Succeeded()) PressSound = ButtonPressSoundAsset.Object;
 }
 
 void AButtonGrid::SetupButtonMaterials()
@@ -89,6 +95,7 @@ void AButtonGrid::RandomisePlatformNumbers()
 void AButtonGrid::OnButtonPressed(AActor* TriggeringActor, AActor* TriggerActor)
 {
 	if(!HasAuthority()) return;
+	PlayButtonSoundMulticast();
 	ATrigger* Trigger = Cast<ATrigger>(TriggerActor);
 	if(!Triggers.Contains(Trigger)) // Makes sure the trigger is in the Triggers array (defined earlier) before continuing
 	{
@@ -130,6 +137,7 @@ void AButtonGrid::StartSequence()
 	GetWorldTimerManager().SetTimer(SequenceHandle, [&]
 	{
 		UE_LOG(LogTemp, Log, TEXT("INDEX TO PUSH OUT: %s"), *FString::SanitizeFloat(SequenceIndex));
+		PlayButtonSoundMulticast(1.2);
 		AL2_Platform* Platform = PendingPlatforms[SequenceIndex];
 		Platform->ExtendPlatform(); // Pushes the platform out, which automatically gets retracted after a few seconds (by the L2_Platform class)
 		SequenceIndex ++; // Increment SequenceIndex so the next platform in the array gets targeted
@@ -180,6 +188,12 @@ void AButtonGrid::Tick(float DeltaTime)
 		{
 			SetButtonState(x, false); // Set the buttons back to their default state visually
 			SetButtonStateMulticast(x, false);
+			PlayButtonSoundMulticast(1.8);
 		}
 	}
+}
+
+void AButtonGrid::PlayButtonSoundMulticast_Implementation(float Pitch)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), PressSound, GetActorLocation(), FRotator(0), 1, Pitch, 0, ButtonPressSoundAttenuation);
 }

@@ -39,24 +39,18 @@ AObjExchangeStation::AObjExchangeStation()
 	BodyMeshes[1]->SetRelativeLocation(FVector(-142, 0, 0));
 	BodyMeshes[1]->SetRelativeRotation(FRotator(0, 180, 0));
 
-	ItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("ItemHolder01")));
-	ItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("ItemHolder02")));
-	for(int x = 0; x < ItemHolders.Num(); x++)
+	ItemLocations.Add(CreateDefaultSubobject<USceneComponent>(FName("ItemHolder01")));
+	ItemLocations.Add(CreateDefaultSubobject<USceneComponent>(FName("ItemHolder02")));
+	for(int x = 0; x < ItemLocations.Num(); x++)
 	{
-		ItemHolders[x]->AttachToComponent(Triggers[x], FAttachmentTransformRules::KeepRelativeTransform);
-		ItemHolders[x]->SetRelativeScale3D(FVector(0.4));
+		ItemLocations[x]->AttachToComponent(Triggers[x], FAttachmentTransformRules::KeepRelativeTransform);
+		ItemLocations[x]->SetRelativeScale3D(FVector(0.4));
 	}
 
 	MovingItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("MovingItemHolder01")));
 	MovingItemHolders.Add(CreateDefaultSubobject<USceneComponent>(FName("MovingItemHolder02")));
 	for(int x = 0; x < MovingItemHolders.Num(); x++)
-		MovingItemHolders[x]->AttachToComponent(ItemHolders[x], FAttachmentTransformRules::KeepRelativeTransform);
-}
-
-// Called when the game starts or when spawned
-void AObjExchangeStation::BeginPlay()
-{
-	Super::BeginPlay();
+		MovingItemHolders[x]->AttachToComponent(ItemLocations[x], FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 
@@ -67,62 +61,96 @@ void AObjExchangeStation::Tick(float DeltaTime)
 
 	if(!HasAuthority()) return;
 	
-	for(int x = 0; x < Triggers.Num(); x++) TriggerCheck(x);
-	
-	AllowPickup = TargetAlpha == Alpha; // Allow pickup when the actors are NOT being transferred
-	// UKismetSystemLibrary::PrintString(GetWorld(), (TEXT("AllowPickup: %s"), *FString::SanitizeFloat(AllowPickup)), true, true, FColor::Blue, 2);
-	
-	if(TargetAlpha > Alpha) Alpha = FMath::Clamp(Alpha = Alpha + DeltaTime, 0.0f, 1.0f);
-	if(TargetAlpha < Alpha) Alpha = FMath::Clamp(Alpha = Alpha - DeltaTime, 0.0f, 1.0f);
-
-	
-/*	if(TargetAlpha == 1.0f && Alpha == TargetAlpha && HeldItems.Num() == 0)
+	// Removes item from HeldItems if picked up by another actor
+	for(const TPair<int, AActor*> HeldItem : HeldItems)
 	{
-		// Reset moving holder locations when neither side has a HeldItem
-		TargetAlpha = 0.0f;
-		Alpha = 0.0f;
-		
-		return;
-	}*/
-	
-	if(HeldItems.Num() < 2) return;
-
-	// Swapping...
-	for(int x = 0; x < BodyMeshes.Num(); x++)
-	{
-		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("Swapping..."), true, true, FColor::Blue, 2);
-
-		const int OtherX = (x == 0 ? 1 : 0);
-		FVector NewLocation = FMath::Lerp(ItemHolders[x]->GetComponentLocation(), ItemHolders[OtherX]->GetComponentLocation(), Alpha);
-		UE_LOG(LogTemp, Log, TEXT("NewLoc: %s"), *NewLocation.ToString());
-		MovingItemHolders[x]->SetIsReplicated(true);
-		MovingItemHolders[x]->SetWorldLocation(NewLocation);
+		const int SideIndex = HeldItem.Key;
+		const AActor* HeldActor = HeldItem.Value;
+		if(!HeldActor) HeldItems.Remove(SideIndex);
+		if(HeldActor->GetAttachParentActor() != this)
+		{
+			HeldItems.Remove(SideIndex);
+			UKismetSystemLibrary::PrintString(GetWorld(), TEXT("ObjExchangeStation - Removed held item"), true, true, FColor::Blue, 2);
+			break; // Stop the for-loop here, until next tick, as HeldItems array was adjusted
+		}
 	}
+	
+	// Only does this check if needed | Saves CPU
+	if(HeldItems.Num() < 2) { for(int x = 0; x < Triggers.Num(); x++) TriggerCheck(x); }
+	
+	// Moves alpha closer to TargetAlpha (0 or 1) | Clamps the value within that range just in-case target alpha exceeds the expected values
+	Alpha = FMath::Clamp(TargetAlpha == 0 ? Alpha - DeltaTime : Alpha + DeltaTime, 0.0f, 1.0f);
 
-	for(TPair<int, AActor*> HeldItem : HeldItems)
+	if(TargetAlpha == Alpha)
 	{
-		if(HeldItem.Value->GetAttachParentActor() != this) HeldItems.Remove(HeldItem.Key);
+		if(Alpha == 0.0f) return; // Only continue if the alpha is actually changing; otherwise, waste of CPU
+		if(Alpha == 1.0f)
+		{
+			for(const TPair<int, AActor*> HeldItem : HeldItems)
+			{
+				const int Index = HeldItem.Key;
+				AActor* HeldActor = HeldItem.Value;
+				const IPickupInterface* PickupInterface = Cast<IPickupInterface>(HeldActor);
+				PickupInterface->Execute_OnPickup(HeldActor, this, ItemLocations[Index == 1 ? 0 : 1]); // Attach the item to its new side's location
+			}
+			
+			// Move item holders back
+			TargetAlpha = 0.0f;
+			Alpha = 0.0f;
+		}
+	}
+	
+	for(int x = 0; x < MovingItemHolders.Num(); x++)
+	{
+		USceneComponent* Holder = MovingItemHolders[x];
+		FVector OriginalLocation = ItemLocations[x]->GetComponentLocation();
+		FVector NewLocation = ItemLocations[x == 0 ? 1 : 0]->GetComponentLocation();
+		const FVector Location = FMath::Lerp(OriginalLocation, NewLocation, Alpha);
+		SetHolderLocation(Holder, Location);
 	}
 }
 
+// Multicast function (executed for every machine) that updates the location of the specified item holder
+void AObjExchangeStation::SetHolderLocation_Implementation(USceneComponent* Holder, FVector NewLocation)
+{
+	Holder->SetWorldLocation(NewLocation);
+}
+
+
 void AObjExchangeStation::TriggerCheck(int TriggerIndex)
 {
-	UBoxComponent* Trigger = Triggers[TriggerIndex];
+	const UBoxComponent* Trigger = Triggers[TriggerIndex];
 	if(!Trigger) return;
 
+	if(HeldItems.Find(TriggerIndex)) return; // If this side is occupied, don't check for other actors
+	
 	TArray<AActor*> OverlappingActors;
 	Trigger->GetOverlappingActors(OverlappingActors);
 	for(AActor* Actor : OverlappingActors)
 	{
-		if(!ObjectFilter.Contains(Actor->GetClass())) return;
-		if(Actor->GetAttachParentActor() != nullptr) return;
-		UE_LOG(LogTemp, Log, TEXT("Actor in station"));
-		IPickupInterface* PickupInterface = Cast<IPickupInterface>(Actor);
-		if(!PickupInterface) return;
-		USceneComponent* ItemHolder = MovingItemHolders[TriggerIndex];
-		PickupInterface->Execute_OnPickup(Actor, this, ItemHolder);
-	
+		if(!ObjectFilter.Contains(Actor->GetClass())) continue;
+		if(Actor->GetAttachParentActor() != nullptr) continue;
+		const IPickupInterface* PickupInterface = Cast<IPickupInterface>(Actor);
+		if(!PickupInterface) continue;
+		USceneComponent* ItemLocation = ItemLocations[TriggerIndex];
+		ItemLocation->SetRelativeScale3D(*ObjectFilter.Find(Actor->GetClass()));
+		PickupInterface->Execute_OnPickup(Actor, this, ItemLocation); // Attaches the actor to the appropriate location
 		HeldItems.Add(TriggerIndex, Actor);
-		if(HeldItems.Num() >= 2) TargetAlpha = 1.0f;
+		UKismetSystemLibrary::PrintString(GetWorld(), TEXT("ObjExchangeStation - Actor now in station"), true, true, FColor::Blue, 2);
+		if(HeldItems.Num() >= 2) SetupItemsForMovement();
 	}
+}
+
+void AObjExchangeStation::SetupItemsForMovement()
+{
+	for(TPair<int, AActor*> HeldItem : HeldItems)
+	{
+		int Index = HeldItem.Key;
+		AActor* HeldActor = HeldItem.Value;
+
+		const IPickupInterface* PickupInterface = Cast<IPickupInterface>(HeldActor);
+		PickupInterface->Execute_OnPickup(HeldActor, this, MovingItemHolders[Index]);
+	}
+	UKismetSystemLibrary::PrintString(GetWorld(), TEXT("ObjExchangeStation - Swap actors"), true, true, FColor::Blue, 2);
+	TargetAlpha = 1.0f;
 }

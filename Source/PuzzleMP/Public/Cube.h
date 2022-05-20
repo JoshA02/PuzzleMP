@@ -51,6 +51,12 @@ protected:
 
 	UFUNCTION()
 	void OnCubeColourChange();
+
+	UFUNCTION()
+	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	USoundBase* HitSound;
+	FVector LastNI = FVector(0, 0, 0);
+	USoundAttenuation* HitSoundAttAsset;
 	
 	UPROPERTY(ReplicatedUsing=OnCubeColourChange)
 	FVector CubeColour = FVector(1);

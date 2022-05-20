@@ -4,6 +4,7 @@
 #include "StandingButton.h"
 
 #include "InteractInterface.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "PuzzleMP/Trigger.h"
 
@@ -18,6 +19,11 @@ AStandingButton::AStandingButton()
 
 	TriggerLocation = CreateDefaultSubobject<USceneComponent>(FName("Trigger Position"));
 	TriggerLocation->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> ButtonPressSoundAtt (TEXT("/Game/Audio/ButtonAttenuation.ButtonAttenuation"));
+	if(ButtonPressSoundAtt.Succeeded()) ButtonPressSoundAttenuation = ButtonPressSoundAtt.Object;
+	static ConstructorHelpers::FObjectFinder<USoundBase> ButtonPressSoundAsset(TEXT("/Game/Audio/Wavs/sfx_3p_buttonpress.sfx_3p_buttonpress"));
+	if(ButtonPressSoundAsset.Succeeded()) PressSound = ButtonPressSoundAsset.Object;
 
 }
 
@@ -37,6 +43,7 @@ void AStandingButton::BeginPlay()
 // Simply triggers the ActorToTrigger (required it implements the InteractInterface)
 void AStandingButton::OnButtonPressed(AActor* TriggeringActor, AActor* TriggerActor)
 {
+	PlayButtonSoundMulticast();
 	if(!HasAuthority()) return;
 	const IInteractInterface* Interface = Cast<IInteractInterface>(ActorToTrigger);
 	if(!Interface)
@@ -45,4 +52,9 @@ void AStandingButton::OnButtonPressed(AActor* TriggeringActor, AActor* TriggerAc
 		return;
 	}
 	Interface->Execute_OnInteract(ActorToTrigger, this);
+}
+
+void AStandingButton::PlayButtonSoundMulticast_Implementation()
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), PressSound, GetActorLocation(), FRotator(0), 1, 1, 0, ButtonPressSoundAttenuation);
 }

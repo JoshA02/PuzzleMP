@@ -34,4 +34,10 @@ protected:
 	UFUNCTION()
 	void OnButtonPressed(AActor* TriggeringActor, AActor* TriggerActor);
 
+	USoundBase* PressSound;
+	USoundAttenuation* ButtonPressSoundAttenuation;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void PlayButtonSoundMulticast();
+
 };

@@ -6,6 +6,7 @@
 #include "DrawDebugHelpers.h"
 #include "PickupableCube.h"
 #include "Trigger.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "Net/VoiceConfig.h"
@@ -29,6 +30,14 @@ AMyCharacter::AMyCharacter()
 
 	PickupLocation = CreateDefaultSubobject<USceneComponent>(FName("Pickup Location"));
 	PickupLocation->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> SoundAsset(TEXT("/Game/HorrorEngine/Audio/Footsteps/Metal_Cue.Metal_Cue"));
+	if(SoundAsset.Succeeded()) FootstepSound = SoundAsset.Object;
+	
+	static ConstructorHelpers::FClassFinder<UMatineeCameraShake> ShakeAsset (TEXT("Blueprint'/Game/Blueprints/Gameplay/WalkShake.WalkShake_C'"));
+	if(ShakeAsset.Succeeded()) WalkShake = ShakeAsset.Class;
+	static ConstructorHelpers::FObjectFinder<USoundAttenuation> FootSoundAtt (TEXT("/Game/Audio/FootstepAttenuation.FootstepAttenuation"));
+	if(ShakeAsset.Succeeded()) FootstepSoundAtt = FootSoundAtt.Object;
 }
 
 void AMyCharacter::GetLifetimeReplicatedProps( TArray< FLifetimeProperty > & OutLifetimeProps ) const
@@ -114,6 +123,15 @@ void AMyCharacter::StopInteract_Implementation()
 void AMyCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+
+	LastFootstepLocation.Z = GetActorLocation().Z; // Equalises Z
+	if(FVector::Distance(LastFootstepLocation, GetActorLocation()) > 200) // Compares distance between this location and the loc of last footstep
+	{	// If more than 100 units, plays sound and updates last footstep loc
+		LastFootstepLocation = GetActorLocation();
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), FootstepSound, GetActorLocation(), 1, 1, 0, FootstepSoundAtt);
+		if(IsLocallyControlled()) Cast<APlayerController>(GetController())->PlayerCameraManager->StartCameraShake(WalkShake);
+	}
 	
 
 	/* Held Item Stuff

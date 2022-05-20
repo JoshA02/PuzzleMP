@@ -25,8 +25,7 @@ void APickupableCube::OnPickup_Implementation(AActor* Player, USceneComponent* T
 void APickupableCube::PickupMulticast_Implementation(USceneComponent* ToAttach) { Pickup(ToAttach); }
 void APickupableCube::Pickup(USceneComponent* ToAttach) // Add a component variable here to attach to
 {
-	// this->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform); // Detach this cube from any actor it's attached to.
-	this->AttachToComponent(ToAttach, FAttachmentTransformRules::SnapToTargetNotIncludingScale); // Attach this cube to the new ToAttach component.
+	this->AttachToComponent(ToAttach, FAttachmentTransformRules::SnapToTargetIncludingScale); // Attach this cube to the new ToAttach component.
 	CubeMesh->SetEnableGravity(false);
 	CubeMesh->SetSimulatePhysics(false);
 	CubeMesh->CanCharacterStepUpOn = ECB_No;

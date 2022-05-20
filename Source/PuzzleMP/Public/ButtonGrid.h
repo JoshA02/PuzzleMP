@@ -56,6 +56,12 @@ protected:
 
 	void RandomisePlatformNumbers();
 
+	USoundAttenuation* ButtonPressSoundAttenuation;
+	USoundBase* PressSound;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void PlayButtonSoundMulticast(float Pitch = 1.0f);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
