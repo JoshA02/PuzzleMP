@@ -20,7 +20,7 @@ public:
 	UStaticMeshComponent* Mesh;
 
 	UPROPERTY(EditInstanceOnly, Category=Default)
-	TEnumAsByte<CubeEnum> CubeType = CubeEnum::CUBE_DEFAULT;
+	CubeEnum CubeType = CubeEnum::CUBE_DEFAULT;
 
 protected:
 	// Called when the game starts or when spawned
