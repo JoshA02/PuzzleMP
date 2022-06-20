@@ -75,3 +75,7 @@ DerivedDataCache/*
 
 #Custom Assets
 Assets/*
+
+#Content Packs
+Content/HorrorEngine
+Content/SciFi_Robot
